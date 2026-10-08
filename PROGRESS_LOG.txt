@@ -324,6 +324,12 @@ LUDO PARTY - PROGRESS LOG
 - Production still needs the same two variables in /etc/ludo-party.env and
   PUBLIC_URL=https://ludo.playunofree.com.
 
+[Repo] Project pushed to GitHub - COMPLETED
+- Connected the folder to https://github.com/Raghbir9101/ludo (branch main) and pushed all
+  66 project files on top of the repo's existing commit, keeping its Node .gitignore.
+- Secrets stay local: .env and node_modules are ignored; only .env.example (placeholders)
+  is in the repo. Checked that no database password or Google secret is in any pushed file.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
