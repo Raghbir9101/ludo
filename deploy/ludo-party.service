@@ -1,0 +1,33 @@
+# systemd unit for Ludo Party. Install as /etc/systemd/system/ludo-party.service
+[Unit]
+Description=Ludo Party game server
+After=network.target
+
+[Service]
+Type=simple
+User=ludo
+Group=ludo
+WorkingDirectory=/srv/ludo-party
+ExecStart=/usr/bin/node server/index.js
+Environment=NODE_ENV=production
+Environment=PORT=8080
+Environment=HOST=127.0.0.1
+Environment=ALLOWED_ORIGINS=https://ludo.example.com
+Environment=PUBLIC_URL=https://ludo.example.com
+# MONGODB_URI and the Google/Facebook secrets live here (chmod 600, owned by root).
+EnvironmentFile=-/etc/ludo-party.env
+Restart=always
+RestartSec=2
+KillSignal=SIGTERM
+TimeoutStopSec=5
+LimitNOFILE=65535
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/srv/ludo-party
+
+[Install]
+WantedBy=multi-user.target

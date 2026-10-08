@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b4fa8">
+<meta name="description" content="Ludo Party - multiplayer Ludo for 4, 6 and 8 players. Play solo, in teams, or with friends in private rooms.">
+<title>Ludo Party</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ludo Party">
+<link rel="preload" href="/fonts/Fredoka.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/css/main.css">
+</head>
+<body>
+<div id="app">
+
+  <section class="screen active" id="scr-splash" aria-label="Loading">
+    <div class="splash-inner">
+      <canvas class="logo-canvas" width="160" height="160" aria-hidden="true"></canvas>
+      <h1 class="title"><span class="app-name">Ludo Party</span></h1>
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="bar"></div></div>
+      <p class="hint">Loading...</p>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-home" aria-label="Home">
+    <header class="home-top">
+      <button class="profile-chip" id="profile-chip" aria-label="Edit your profile">
+        <span class="avatar" id="home-avatar"></span><span id="home-name">Player</span>
+      </button>
+      <div class="top-tools">
+        <button class="icon-btn" id="friends-btn" aria-label="Friends"><span aria-hidden="true">👥</span><span class="badge" id="friends-badge" hidden></span></button>
+        <button class="icon-btn" data-go="settings" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+    <div class="home-hero">
+      <canvas class="logo-canvas big" aria-hidden="true"></canvas>
+      <h1 class="title"><span class="app-name">Ludo Party</span></h1>
+    </div>
+    <nav class="menu tiles" aria-label="Main menu">
+      <div class="tile-row three">
+        <button class="tile" data-go="create"><canvas class="tile-art" data-art="create" aria-hidden="true"></canvas><span class="tile-name">CREATE ROOM</span><span class="tile-cap">Invite friends</span></button>
+        <button class="tile" data-mode="team"><canvas class="tile-art" data-art="team" aria-hidden="true"></canvas><span class="tile-name">TEAM UP</span><span class="tile-cap">Teams vs bots</span></button>
+        <button class="tile" data-go="join"><canvas class="tile-art" data-art="join" aria-hidden="true"></canvas><span class="tile-name">JOIN ROOM</span><span class="tile-cap">Enter a code</span></button>
+      </div>
+      <div class="tile-row two">
+        <button class="tile wide" data-mode="solo"><canvas class="tile-art" data-art="computer" aria-hidden="true"></canvas><span class="tile-name">COMPUTER</span><span class="tile-cap">Play vs bots</span></button>
+        <button class="tile wide" data-mode="pass"><canvas class="tile-art" data-art="pass" aria-hidden="true"></canvas><span class="tile-name">PASS N PLAY</span><span class="tile-cap">One device</span></button>
+      </div>
+    </nav>
+    <p class="offline-note" id="offline-note" hidden>You're offline. Solo and team vs bots still work.</p>
+  </section>
+
+  <section class="screen" id="scr-setup" aria-labelledby="setup-title">
+    <header class="bar"><button class="icon-btn back" data-back aria-label="Back">‹</button><h2 id="setup-title">Play Solo</h2><span></span></header>
+    <div class="panel scroll">
+      <fieldset class="field"><legend>Players</legend><div class="seg" id="setup-count"></div></fieldset>
+      <fieldset class="field" id="setup-color-field"><legend>Your color</legend><div class="swatches" id="setup-colors"></div></fieldset>
+      <fieldset class="field"><legend>Bot difficulty</legend><div class="seg" id="setup-diff"></div></fieldset>
+      <fieldset class="field" id="setup-team-field" hidden><legend>Team</legend><div id="setup-team-info" class="team-info"></div>
+        <label class="toggle"><input type="checkbox" id="setup-assist" checked><span>Assist mode</span></label></fieldset>
+      <fieldset class="field"><legend>Rules</legend>
+        <div class="seg small" id="setup-quick"></div>
+        <label class="toggle"><input type="checkbox" id="setup-blockades"><span>Blockades</span></label>
+        <label class="toggle"><input type="checkbox" id="setup-capture"><span>Capture to enter home</span></label>
+      </fieldset>
+      <div class="actions" id="setup-actions">
+        <button class="btn btn-big c-green" id="setup-start">START</button>
+        <button class="btn c-blue" id="setup-online" hidden>CREATE TEAM ROOM</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-create" aria-labelledby="create-title">
+    <header class="bar"><button class="icon-btn back" data-back aria-label="Back">‹</button><h2 id="create-title">Create Room</h2><span></span></header>
+    <div class="panel scroll">
+      <fieldset class="field"><legend>Players</legend><div class="seg" id="create-count"></div></fieldset>
+      <fieldset class="field"><legend>Mode</legend><div class="seg" id="create-mode"></div></fieldset>
+      <fieldset class="field"><legend>Turn timer</legend><div class="seg" id="create-timer"></div></fieldset>
+      <fieldset class="field"><legend>Rules</legend>
+        <div class="seg small" id="create-quick"></div>
+        <label class="toggle"><input type="checkbox" id="create-blockades"><span>Blockades</span></label>
+        <label class="toggle"><input type="checkbox" id="create-capture"><span>Capture to enter home</span></label>
+        <label class="toggle"><input type="checkbox" id="create-assist" checked><span>Assist mode (team)</span></label>
+        <label class="toggle"><input type="checkbox" id="create-automove" checked><span>Auto-move single option</span></label>
+      </fieldset>
+      <div class="actions"><button class="btn btn-big c-blue" id="create-go">CREATE</button></div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-join" aria-labelledby="join-title">
+    <header class="bar"><button class="icon-btn back" data-back aria-label="Back">‹</button><h2 id="join-title">Join Room</h2><span></span></header>
+    <div class="panel">
+      <label class="code-label" for="join-code">Room code</label>
+      <input id="join-code" class="code-input" maxlength="6" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="ABC123">
+      <p class="error" id="join-error" role="alert" hidden></p>
+      <div class="actions">
+        <button class="btn btn-big c-yellow" id="join-go">JOIN</button>
+        <button class="btn c-blue" id="join-spectate" hidden>WATCH AS SPECTATOR</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-lobby" aria-labelledby="lobby-title">
+    <header class="bar"><button class="icon-btn back" id="lobby-leave" aria-label="Leave room">‹</button><h2 id="lobby-title">Lobby</h2><span></span></header>
+    <div class="panel scroll">
+      <div class="room-code-box">
+        <div><small>ROOM CODE</small><div class="room-code" id="lobby-code">------</div></div>
+        <button class="btn c-blue small" id="lobby-share">SHARE</button>
+      </div>
+      <p class="lobby-rules" id="lobby-rules"></p>
+      <div class="seat-ring" id="lobby-seats"></div>
+      <fieldset class="field"><legend>Your color</legend><div class="swatches" id="lobby-colors"></div></fieldset>
+      <div class="host-tools" id="lobby-host" hidden>
+        <p class="hint left">Tap <b>Move</b> on a seat, then <b>Here</b> on another to swap them.</p>
+        <label class="toggle"><input type="checkbox" id="lobby-fillbots" checked><span>Fill empty seats with bots</span></label>
+        <div class="seg small" id="lobby-diff"></div>
+        <button class="btn small c-blue" id="lobby-shuffle">SHUFFLE SEATS</button>
+      </div>
+      <p class="hint" id="lobby-hint"></p>
+      <div class="actions">
+        <button class="btn btn-big c-green" id="lobby-ready">READY</button>
+        <button class="btn btn-big c-red" id="lobby-start" hidden>START GAME</button>
+        <button class="btn c-purple" id="lobby-invite" hidden>INVITE FRIENDS</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-friends" aria-labelledby="friends-title">
+    <header class="bar"><button class="icon-btn back" data-back aria-label="Back">‹</button><h2 id="friends-title">Friends</h2><span></span></header>
+    <div class="panel scroll">
+      <div class="friends-guest" id="friends-guest" hidden>
+        <p class="hint">Sign in with Google or Facebook to add friends and invite them to your games.</p>
+        <div class="actions"><button class="btn c-blue" data-go="profile">SIGN IN</button></div>
+      </div>
+      <div id="friends-main">
+        <div class="seg" id="friends-tabs"></div>
+        <div class="friends-tab" id="ftab-list"><ul class="people" id="friends-list"></ul><p class="hint" id="friends-empty">No friends yet. Add some from the Add tab!</p></div>
+        <div class="friends-tab" id="ftab-requests" hidden>
+          <h3 class="sub">Received</h3><ul class="people" id="friends-incoming"></ul>
+          <h3 class="sub">Sent</h3><ul class="people" id="friends-outgoing"></ul>
+        </div>
+        <div class="friends-tab" id="ftab-add" hidden>
+          <fieldset class="field"><legend>Your friend code</legend>
+            <div class="code-row"><span class="room-code" id="my-friend-code">--------</span><button class="btn small c-blue" id="copy-friend-code">COPY</button></div>
+          </fieldset>
+          <fieldset class="field"><legend>Add by code</legend>
+            <div class="code-row"><input class="text-input" id="add-code" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="ABCD2345" aria-label="Friend code"><button class="btn small c-green" id="add-code-go">ADD</button></div>
+          </fieldset>
+          <fieldset class="field"><legend>Search by name</legend>
+            <input class="text-input" id="friend-search" maxlength="20" autocomplete="off" placeholder="Type a name" aria-label="Search players by name">
+            <ul class="people" id="search-results"></ul>
+          </fieldset>
+          <fieldset class="field" id="fb-suggest" hidden><legend>Facebook friends who play</legend><ul class="people" id="suggestions"></ul></fieldset>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-game" aria-label="Game">
+    <header class="bar game-bar">
+      <button class="icon-btn" id="game-sound" aria-label="Toggle sound">🔊</button>
+      <button class="round-btn" id="game-menu" aria-label="Game menu"><span aria-hidden="true">‹</span></button>
+      <h2 id="game-title">Ludo Party</h2>
+    </header>
+    <div class="game-area" id="game-area">
+      <div class="panels top" id="panels-top"></div>
+      <div class="board-wrap" id="board-wrap">
+        <canvas id="board" tabindex="0" aria-label="Ludo board. Press Space to roll, Tab to choose a token, Enter to move."></canvas>
+        <div class="callouts" id="callouts" aria-hidden="true"></div>
+      </div>
+      <div class="panels bottom" id="panels-bottom"></div>
+    </div>
+    <footer class="game-foot">
+      <button class="round-btn small" id="chat-btn" aria-label="Chat" aria-haspopup="true" aria-expanded="false"><span aria-hidden="true">💬</span></button>
+      <span class="spectator-badge" id="spectator-badge" hidden>👁 Spectating</span>
+      <span class="status" id="game-status" aria-hidden="true"></span>
+      <button class="round-btn small" id="game-fullscreen" aria-label="Fullscreen" aria-pressed="false"><span aria-hidden="true">⛶</span></button>
+    </footer>
+    <div class="chat-pop" id="chat-pop" hidden></div>
+  </section>
+
+  <section class="screen" id="scr-results" aria-labelledby="results-title">
+    <div class="results-inner">
+      <h2 id="results-title" class="title small">Results</h2>
+      <div class="trophy" id="results-trophy" aria-hidden="true"></div>
+      <div class="podium" id="podium"></div>
+      <ol class="rank-list" id="rank-list"></ol>
+      <div class="actions">
+        <button class="btn btn-big c-green" id="results-again">PLAY AGAIN</button>
+        <button class="btn c-blue" id="results-home">HOME</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-profile" aria-labelledby="profile-title">
+    <header class="bar"><button class="icon-btn back" data-back aria-label="Back">‹</button><h2 id="profile-title">Profile</h2><span></span></header>
+    <div class="panel scroll">
+      <div class="profile-card">
+        <span id="profile-preview"></span>
+        <div class="profile-who"><strong id="profile-name-view"></strong><small id="profile-sub"></small></div>
+      </div>
+      <fieldset class="field"><legend>Name</legend>
+        <input id="set-name" class="text-input" maxlength="14" autocomplete="nickname" aria-label="Your name">
+      </fieldset>
+      <fieldset class="field" id="profile-photo"><legend>Photo</legend>
+        <div id="photo-in" hidden>
+          <div class="photo-btns">
+            <button class="btn small c-green" id="photo-upload">UPLOAD PHOTO</button>
+            <button class="btn small c-red" id="photo-remove" hidden>REMOVE</button>
+            <input type="file" id="photo-file" accept="image/jpeg,image/png,image/webp" hidden>
+          </div>
+          <label class="toggle"><input type="checkbox" id="photo-use"><span>Show my photo instead of the avatar</span></label>
+        </div>
+        <p class="hint left" id="photo-guest">Sign in to use your own photo. You can still pick an avatar below.</p>
+      </fieldset>
+      <fieldset class="field"><legend>Avatar</legend>
+        <div class="avatars" id="set-avatars" role="radiogroup" aria-label="Avatar"></div>
+      </fieldset>
+      <fieldset class="field" id="set-account"><legend>Account</legend>
+        <div class="account-out" id="account-out">
+          <p class="hint left">Sign in to add friends, invite them to games and show your photo.</p>
+          <div class="signin-btns">
+            <button class="btn signin google" id="signin-google" hidden><span class="logo" aria-hidden="true">G</span>Continue with Google</button>
+            <button class="btn signin facebook" id="signin-facebook" hidden><span class="logo" aria-hidden="true">f</span>Continue with Facebook</button>
+            <button class="btn small c-purple" id="signin-dev" hidden>DEV SIGN-IN (test only)</button>
+          </div>
+          <p class="hint left" id="signin-none" hidden>Sign-in isn't set up on this server yet.</p>
+        </div>
+        <div class="account-in" id="account-in" hidden>
+          <div class="account-row"><span id="account-avatar"></span><div><strong id="account-name"></strong><small>Friend code <b id="account-code"></b></small></div></div>
+          <button class="btn small c-red" id="signout">SIGN OUT</button>
+        </div>
+      </fieldset>
+    </div>
+  </section>
+
+  <section class="screen" id="scr-settings" aria-labelledby="settings-title">
+    <header class="bar"><button class="icon-btn back" data-back aria-label="Back">‹</button><h2 id="settings-title">Settings</h2><span></span></header>
+    <div class="panel scroll">
+      <button class="btn c-blue" data-go="profile">EDIT PROFILE</button>
+      <fieldset class="field"><legend>Sound</legend>
+        <label class="range"><span>Master volume</span><input type="range" id="set-volume" min="0" max="100"></label>
+        <label class="toggle"><input type="checkbox" id="set-sfx"><span>Sound effects</span></label>
+        <label class="toggle"><input type="checkbox" id="set-music"><span>Music</span></label>
+        <label class="toggle"><input type="checkbox" id="set-vibrate"><span>Vibration</span></label>
+      </fieldset>
+      <fieldset class="field"><legend>Gameplay</legend>
+        <label class="toggle"><input type="checkbox" id="set-automove"><span>Auto-move when only one move</span></label>
+        <label class="toggle"><input type="checkbox" id="set-reduced"><span>Reduce motion</span></label>
+      </fieldset>
+      <button class="btn c-blue" id="set-install" hidden>INSTALL APP</button>
+      <p class="hint version"><span class="app-name">Ludo Party</span> · All art and sound generated in code.</p>
+    </div>
+  </section>
+
+  <div class="modal" id="game-modal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <h3 id="modal-title">Paused</h3>
+      <div class="modal-body" id="modal-body"></div>
+      <div class="actions" id="modal-actions"></div>
+    </div>
+  </div>
+  <canvas id="fx-overlay" aria-hidden="true"></canvas>
+  <div class="toast" id="toast" role="status" hidden></div>
+  <div class="sr-only" id="live" aria-live="polite" aria-atomic="true"></div>
+  <div class="sr-only" id="live-urgent" aria-live="assertive" aria-atomic="true"></div>
+</div>
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>

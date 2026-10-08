@@ -1,0 +1,337 @@
+LUDO PARTY - PROGRESS LOG
+=========================
+
+[Step 1] Rules engine and tests - COMPLETED
+- Built the pure rules engine in shared/engine.js (createGame, roll, move, legalMoves,
+  applyEvents) with constants and board math in shared/rules.js. No I/O; dice values are
+  injected by the caller.
+- server/game.js wraps the shared engine and adds server-side dice via crypto.randomInt.
+- Implemented: enter on 6, bonus roll on 6/capture/home, three-sixes forfeit, captures,
+  safe start and star squares, exact finish, auto-pass when no move exists, ranked finishing
+  order, inactive (empty) seats, quick mode (1 or 2 tokens), blockades, capture-required-to-
+  enter-home (tokens lap again), team mode (no teammate captures, stacking), assist mode.
+- Tests: 20 node:test cases in tests/game.test.js, all passing, including randomized full
+  games for 4/6/8 players in FFA and team mode, and event replay for client mirroring.
+- Note: home column progress is numbered 13n..13n+4 with home at 13n+5 (progress 13n-1 is
+  reserved for tokens that must lap again under the capture-to-enter-home rule).
+
+[Step 2] Board generator and static render - COMPLETED
+- shared/geometry.js: one parametric buildBoard(n) for 4/6/8 arms. Center is a regular
+  n-gon (side 3); each arm is a 3x6 strip; yards are right-angle kites between arms so the
+  outline is a clean square / hexagon / octagon. Outputs {x, y, rot} for 13n track squares,
+  n x 5 home-column squares, 4 yard slots per seat, home slots and center triangles.
+- client/js/board/render.js: DPR-aware BoardView with cached board layer (redrawn only on
+  view change), cartoon pawns with highlight/outline/colorblind symbol, stacked-token fan-out
+  with count badges, pinch-zoom/pan/wheel zoom and animated focus for 6/8-player boards.
+- Classic look: white board, saturated yards with white inner squares and slots, colored
+  start squares with white stars, grey star safe squares, colored home-entry arrows, colored
+  home columns, center split into n colored triangles, soft board drop shadow.
+- client/dev/boards.html shows all three boards side by side for review.
+- Tests: tests/geometry.test.js (18 cases) - square counts 52/78/104, adjacency, no overlaps,
+  home-column continuity, start squares beside own yard, yard slots inside outline.
+- Fixed: star paths were missing beginPath, which recolored earlier stars and arrows.
+
+[Step 3] Solo mode vs bots - COMPLETED
+- shared/botcore.js: move scoring (capture, home, leave yard, enter home column, safe
+  square, escape danger, danger penalty, progress) with Easy (mostly random), Medium (score
+  + noise) and Hard (pure score + lookahead on opponent threats incl. 7-12 squares and yard
+  tokens). Bots wait 600-1200 ms before acting. client/js/bot.js re-exports it.
+- client/js/local.js: LocalGame driver running the shared engine offline with crypto dice,
+  waits for the view's animation queue before each bot action, auto-moves a single option.
+- client/js/ui/game.js: game screen with ordered event animation queue (fast-forwards when
+  behind), HUD player panels (avatar, name, home count, bot/AFK tags, timer ring), dice in the
+  active player's panel, tap / press-and-hold ghost preview with path dots, keyboard control,
+  callouts, aria-live announcements, auto-pan on 8-player boards, compact panels on phones.
+- Home, solo/team setup (count, color, difficulty, rules), results podium, settings screens,
+  screen router with back-button support, splash with progress bar.
+- Verified in browser at 390x800 and 360x740: 4- and 8-player solo games, a full game played
+  to the results screen with no console errors.
+- Fixed: [hidden] overridden by display rules; CSS custom properties not applied by the DOM
+  helper (panel glow and podium colors); dice overlapping yards (moved into the panel).
+
+[Step 4] Animation and sound - COMPLETED
+- client/js/anim.js: tween engine with back-out / elastic-out / bounce easing, frame loop
+  that sleeps when idle, fast-forward (finishAll) for hidden tabs and backlogs, world-space
+  particle system (bursts, star bursts, impact rings) and full-screen confetti overlay.
+- client/js/dice.js: rounded white die with pips and soft shadow; shake -> tumbling roll with
+  face flicker -> squash-and-bounce landing on the server value (~800 ms).
+- Token animations: square-by-square hops (~118 ms) with arc and squash-and-stretch, yard
+  exit pop + bounce, capture impact ring + victim shrink/spin/zoom back to yard, home star
+  burst, SIX! / CAPTURE! / HOME! callouts, win confetti in winner colors + trophy + podium.
+- client/js/audio.js: all SFX synthesized (dice rattle, plastic clack, rising hop pluck,
+  boing exit, thud + slide whistle capture, home arpeggio, six sting, turn chime, timer
+  ticks, fanfare, calm finish, button pop, chat blip) plus a generative music loop (bouncy
+  bass, pentatonic melody, light drums) on a lookahead scheduler. Unlocks on first gesture;
+  vibration on capture, six and your turn.
+- Reduced motion (OS setting or toggle): shorter hops, no shake, no particles or confetti.
+- Verified in browser: every SFX and the music scheduler run with AudioContext "running" and
+  no errors; dice tumble and yard-exit captured mid-animation.
+
+[Step 5] Online multiplayer server and client - COMPLETED
+- server/index.js: one Node process serves the static client (/, /r/CODE, /shared) and the
+  WebSocket endpoint /ws (ws package, 4 KB max payload, optional origin allow-list,
+  25 s heartbeat that drops dead sockets, /healthz with room/connection stats). Listens
+  dual-stack (IPv4 + IPv6) by default.
+- server/rooms.js: authoritative RoomManager. 6-character room codes without look-alike
+  characters, host settings, unique colors, ready-up, kick (with ban), seat moves, add/remove
+  bots, fill empty seats with bots, start rules (2+ humans, all ready, both teams filled).
+  Session tokens let a reload or network drop rejoin the same seat; seats are held 60 s and
+  then handed to a bot; a host who leaves passes host to the next human.
+- Turn timer (off / 15 s / 30 s) with server-side auto-play on timeout; three timeouts mark a
+  player AFK and a bot plays until they interact. Server delays bots and timers until clients
+  have finished animating. Spectators can join a running game. Quick chat (fixed phrases and
+  emojis only), per-connection rate limiting, empty rooms cleaned up after 5 minutes.
+- client/js/net.js (auto-reconnect with backoff, message queue), client/js/state.js (mirrors
+  the server game by replaying events through the shared engine; stale updates dropped by
+  sequence number, gaps trigger a resync), client/js/ui/lobby.js (create/join screens and a
+  lobby laid out like the board, with host tools and share link).
+- Verified in browser against a real server: create room, a second player joins (headless
+  Node client), start with bots filling seats, live play, socket drop and automatic
+  reconnect, full page reload resumes the same seat, quick chat bubble, spectator join,
+  join by share link /r/CODE, stale saved room falls back to Home cleanly.
+- Fixed: a stale server process was answering /ws with 404; the turn-timer ring was missing
+  after a reload (timer message arrived before the game screen subscribed); reloading during
+  your own turn used to reset your timer (now the running timer is kept).
+- Added scripts/bot-client.js and scripts/host-client.js: headless players for testing.
+- Tests: tests/rooms.test.js (12 cases): codes, join errors, start rules, host tools,
+  turn validation with event replay matching the server, reconnect and seat hold, AFK,
+  timer kept across reconnect, room cleanup, rate limiting, chat filtering, team rooms.
+
+[Step 6] Team mode - COMPLETED
+- Partners sit opposite (team = seat parity). The engine already blocks teammate captures,
+  lets teammates share squares, ranks whole teams, and supports assist mode (after finishing,
+  you roll and move your partner's tokens). Team-aware bots avoid hurting partners and favor
+  hitting the leading team.
+- Offline: Team Match setup (4/6/8 players, you + bot partners vs bots, assist toggle).
+  Online: "Create team room" from the setup screen or the Team option on the create screen.
+- Lobby shows each seat's team (including the host and empty seats); game panels show TA/TB.
+- Results: "Your team wins / placed Nth", team podium with grouped avatars, ranking rows
+  with member names.
+- Verified: a full 8-player team game (1,875 moves, fast-forwarded) to the results screen
+  with no errors; a 6-player online team room joined via share link and played.
+- Tests: new room test for team start rules and seat-parity teams (engine team tests from
+  Step 1 cover captures, stacking, assist and team ranking).
+
+[Step 7] Menus, settings, PWA, accessibility - COMPLETED
+- Font: Fredoka (SIL Open Font License) self-hosted in client/fonts as variable-weight
+  woff2 (latin + latin-ext subsets, 34 KB total) with the license file alongside.
+- Icons: scripts/make-icons.js (npm run icons) draws the app icon in code (mini Ludo board
+  on a purple tile) and writes PNGs with Node's built-in zlib: 192, 512, maskable 512,
+  Apple touch 180 and favicon 32. No new dependencies.
+- PWA: client/manifest.webmanifest (standalone, portrait, theme colors, icons) and
+  client/sw.js. The server publishes /precache.json (every client and shared file) so the
+  service worker never has a stale file list. App code is network-first (always fresh when
+  online), fonts/icons cache-first, and navigation falls back to the cached app when offline.
+  "Install app" button in Settings when the browser offers installation.
+- Offline: verified the app boots from cache with the network disabled and a full solo game
+  starts. Create/Join with the server unreachable now shows "Connecting..." and then a clear
+  message that the server can't be reached and Solo still works offline.
+- Accessibility: audited every menu screen (all controls have accessible names, segmented
+  buttons expose pressed state, visible focus rings, focus moves to each new screen).
+  Escape acts as Back on menu screens and opens/dismisses the in-game menu (resuming play);
+  dialogs trap Tab and return focus when closed; Tab on the board cycles movable tokens and
+  now lets focus leave after the last one. Rolls, moves and turns are announced via
+  aria-live (verified). Vibration toggle hidden on devices without vibration support.
+- Fixed: toasts wrapped into a narrow column (shrink-to-fit width at left: 50%).
+- Tests: 54 passing.
+
+[Step 8] Deployment and load test - COMPLETED
+- deploy/nginx.conf: HTTP->HTTPS redirect, TLS, /ws proxied with Upgrade/Connection
+  headers and 1-hour read/send timeouts, gzip, security headers and a strict CSP (the app
+  has no inline scripts), /healthz restricted to localhost, Cloudflare real-IP block.
+- deploy/ludo-party.service: systemd unit (dedicated user, auto-restart, hardening,
+  ALLOWED_ORIGINS set to the production domain).
+- DEPLOY.md: install, systemd, nginx + certbot, Cloudflare settings (Full strict SSL,
+  WebSockets on, Rocket Loader off, 100 s idle timeout covered by the 25 s server ping),
+  environment variables, updating, monitoring and capacity notes.
+- /healthz now reports memory, CPU time, uptime and message/game counters. New env knobs
+  for testing: TIMER_SCALE, BUCKET_RATE / BUCKET_SIZE.
+- scripts/loadtest.js: 50 rooms x 4 headless WebSocket players (200 sockets) that create,
+  join, ready and play full games against a spawned (or remote) server, reporting latency
+  percentiles, throughput, server CPU/memory, errors and resyncs.
+- Results (dev machine, server and clients on the same PC):
+  * Accelerated full games: 50/50 games finished in 9.8 s, ~4,900 actions/s, action ->
+    broadcast p50 5.3 ms / p95 8.2 ms / p99 10.9 ms, peak 81 MB RSS, 0 errors, 0 resyncs.
+  * Realtime pacing, 60 s: 3,960 actions, p50 0.8 ms / p95 1.2 ms / p99 1.5 ms, server CPU
+    avg 3.9% of one core, peak 58 MB RSS, 0 errors, 0 resyncs.
+- Found by the first load-test run: instant-acting clients exceeded the per-socket rate
+  limit and stalled until the turn timer fired (expected for real users; the accelerated test
+  now lifts the limit on its own server), and auto-move raced client moves. Both were test
+  setup issues, not server defects.
+- Tests: 54 passing.
+
+[Restyle] Classic mobile-Ludo look from the reference screenshots - COMPLETED
+- Palette: bright classic colors (red, green, yellow, blue, plus purple, orange, cyan and
+  pink for 6/8 players) in shared/rules.js.
+- Board: flat white board with thin grey grid, solid yard borders around a white inner
+  square, solid colored discs for empty yard slots, plain colored start squares, outlined
+  stars on safe squares, thin colored arrows on entry squares, borderless center triangles.
+- Tokens: new map-pin pieces (silver pin with glossy colored ball, standing on a colored
+  ring base that stays on the ground while the pin hops). Tap targets cover the pin head.
+- Player names are drawn on the board in each yard's colored border ("You" for the local
+  player); on 6/8-player boards they sit on the inner side of the yard and are offset by
+  their measured width so they never cover tokens.
+- Game HUD: corner panels in gold-rimmed navy frames with a pin tab (home count and team
+  badges) and a beige dice box showing that player's last roll. The live die moves into the
+  active panel, and the turn timer is now a glowing track around the dice box. Round gold
+  menu button top-center, sound button top-left, chat and new fullscreen button at the bottom.
+- Home: logo scene (tilted board, die, four pawns) with a multi-colored chunky title, and
+  five gold-framed tiles with code-drawn art: CREATE ROOM, TEAM UP, JOIN ROOM, COMPUTER,
+  PASS N PLAY.
+- New client/js/ui/theme.js: blue backdrop with a faint tiled board/dice pattern (generated
+  at load as a data URL), the tile illustrations and the logo. All art is drawn in code.
+- Full CSS reskin of every screen (setup, create/join, lobby, settings, game, chat, menu
+  modal, results, toast): gold-framed buttons and panels, navy segmented controls with a
+  gold selected state, outlined white text. Existing class names and markup hooks kept.
+- New Pass N Play mode: 2-8 people on one device (all seats human, "Player 1..N"), with
+  turn prompts and results that name the player instead of saying "You".
+- Intentionally not copied from the reference: its logo, name, crown, coins, tournament
+  banner, ads and bottom navigation bar. Text was changed to this game's own features.
+- Verified in the browser: home, setup, lobby, online game with timer, menu, results, and
+  4-player and 8-player boards. Tests: 54 passing.
+
+[Accounts & Friends] Google/Facebook sign-in, friends, profile photos, host lobby controls - COMPLETED
+- New dependency (approved): the official `mongodb` driver. Accounts, sessions and
+  friendships are stored in MongoDB when MONGODB_URI is set; without it an in-memory store
+  with the same interface is used (accounts are lost on restart).
+- Sign-in is optional. Guests play exactly as before with emoji avatars; friends need an account.
+- Google sign-in (OAuth code flow with PKCE) and Facebook sign-in (code flow with
+  appsecret_proof) using plain fetch, with no extra libraries. Configured only through environment
+  variables. A button appears only when that provider's ID and secret are set.
+- Sessions: random token in an HttpOnly, SameSite=Lax cookie (Secure on https), 30-day
+  lifetime. Only a SHA-256 hash is stored, and sessions expire automatically via a TTL index. The
+  WebSocket reads the same cookie when it connects. Signing in or out reconnects it.
+- Friends: send/accept/decline/remove requests by 8-character friend code or name search;
+  adding someone who already asked you accepts their request; limit of 200 friends.
+  Live presence (Online / In lobby / Playing / Offline) and a request badge on the home
+  screen. Facebook friends who also play show up as suggestions.
+- Invites: from the lobby, invite an online friend; they get a popup with JOIN (or a toast
+  if they are mid-game). Friends in a lobby show a JOIN button on the friends list.
+  "+ Friend" / "Accept" buttons appear on other signed-in players' seats in the lobby.
+- Profile photos and names: Google/Facebook photo in the home profile chip, settings,
+  friends list, lobby seats, the in-game player panels (photo with a small colored pin
+  badge) and the results podium. Only https photo URLs from Google/Facebook image hosts
+  are accepted. Names from accounts can be up to 20 characters and are editable in Settings.
+- Room creator (host) controls in the lobby: move any player or bot to another seat
+  (swap), shuffle all seats randomly, set each seat's team (A/B) in team mode, add/remove
+  bots, kick, and hand the host role to another connected player. Teams are now per seat
+  instead of fixed by seat order; the game starts as long as each team has at least one player.
+- Deploy: DEPLOY.md now covers MongoDB setup, Google and Facebook app registration
+  (redirect URIs, Facebook App Review for friend suggestions), all new environment
+  variables and a root-only /etc/ludo-party.env for secrets. nginx: CSP allows Google and
+  Facebook photo hosts, and /auth/ is rate limited. The systemd unit loads the env file.
+- Local testing: DEV_LOGIN=1 adds a name-only "Dev sign-in" (always off in production).
+- Verified: 64 tests passing (+10 new: friends flow, rules, search, Facebook suggestions,
+  account profile in rooms, host team/shuffle/host transfer, photo allow-list, dev sign-in
+  and cookies, Google OAuth state/PKCE with a mocked Google, and MongoDB round trip, which
+  passes against MongoDB 7 in Docker). Browser: two signed-in users with MongoDB running:
+  friend request, accept, presence, invite and join, host team change, bots, shuffle, game
+  panels with photo. Load test: 50/50 rooms, 0 errors.
+
+[Config] MongoDB Atlas connected, .env support - COMPLETED
+- The server now uses the project's MongoDB Atlas database (`ludo`) for accounts, sessions
+  and friendships. The connection string lives in a local .env file, not in code.
+- `npm start` loads .env automatically (Node's built-in --env-file-if-exists; no new
+  package). Added .gitignore (node_modules, .env) and .env.example as a template.
+- Google and Facebook sign-in are postponed. DEV_LOGIN=1 in .env keeps a test sign-in
+  available locally.
+- Verified: the server connected to Atlas and created its collections and indexes. A test
+  sign-in wrote an account to Atlas, which was then deleted. The local Docker MongoDB is no longer used.
+
+[Animations] Closer match to classic mobile Ludo motion - COMPLETED
+- Dice: the roll now tumbles as a 3D cube turning through quarter turns (two faces visible
+  as it turns, the far face shaded) with a lift and tilt, landing on the rolled value with a squash.
+- Movable tokens: a spinning dashed selector ring around the base (white under a dark
+  dash in the player's color) and the pin hops in place, replacing the old pulsing circle.
+- Captures: the knocked token jolts, then runs backwards square by square along its own
+  track and back into its yard (up to ~1 s), instead of flipping through the air. The
+  server's animation allowance for captures was raised to match (620 -> 1150 ms).
+- Your turn: a bouncing gold arrow points at your dice while you can roll.
+- Stacked tokens on one square shrink and stand side by side; the number badge now only
+  appears for stacks of 4 or more.
+- Verified in the browser: pointer arrow, cube frames, selector ring, side-by-side stacks
+  and the backward capture run (17 squares back to the yard in 1.06 s). Tests: 64 passing.
+
+[Profile] Profile screen: photo upload, avatar picker, name - COMPLETED
+- New Profile screen, opened by tapping the profile chip on Home (or EDIT PROFILE in
+  Settings). It shows a large preview with your name and friend code, plus Name, Photo,
+  Avatar and Account sections. Sign-in/sign-out moved here; Settings now only holds
+  sound, gameplay, motion and install options.
+- Guests can set a name and pick an emoji avatar (saved on the device).
+- Signed-in players can upload their own photo. The browser crops it to a 256x256 square
+  and compresses it to JPEG before uploading, so phone photos stay small. Photos are
+  stored in MongoDB (new `photos` collection) and served from /api/pic/<id> with
+  long-lived caching; a new upload gets a new URL. A switch chooses between the photo
+  and the avatar, and REMOVE deletes the uploaded photo (falling back to the
+  Google/Facebook photo, if any, or the avatar).
+- The new photo or avatar shows up immediately on Home, in the friends list, on lobby
+  seats, in game panels and on the results screen (the connection refreshes after a change).
+- Upload safety: signed-in only, 256 KB limit, file type checked from the file's contents
+  (JPEG/PNG/WebP only), same-origin requests only, and served images cannot run scripts.
+  nginx allows a 300 KB body only on the upload endpoint.
+- Fixed during testing: the avatar grid was pushed off-screen by the section title, and
+  the photo/avatar switch sent the old setting back instead of the new one.
+- Verified in the browser against Atlas: upload, preview, photo on a lobby seat, switching
+  to the avatar and back, and remove. Tests: 66 passing (+2 for upload, serving, rejected
+  input, avatar mode, removal and photos reaching room seats).
+
+[Mobile & seating] Your seat at the bottom left, avatars in game, name before joining, mobile-first layout - COMPLETED
+- Every player now sees their own seat in the bottom-left corner, in the game and in the
+  lobby. The board is turned for each viewer (shared/geometry.js rotateBoard/povSteps);
+  the game rules and seat numbers are unchanged, so all players still see the same game.
+  Works for 4, 6 and 8 players and in Pass N Play (Player 1 at the bottom left).
+  Spectators see the normal orientation.
+- Game panels now show each player's photo or emoji avatar (bots show the robot) on a tile
+  in the player's color, with a small pin badge. Offline games also show your account photo.
+- Name prompt: guests are asked for their name (and can pick an avatar) before joining or
+  creating a room, and anyone opening an invite link is asked before joining. The current
+  name is prefilled, so it is one tap to confirm; names need at least 2 letters.
+- Mobile-first layout fixes:
+  * Home: the three top tiles no longer overflow on 360-390 px phones; the menu is centered
+    vertically and tiles are taller on tall phones.
+  * Long screens (setup, create room, lobby): the main button (START / CREATE / READY /
+    START GAME) stays pinned at the bottom instead of hiding below the fold.
+  * Game: bigger player panels and dice on phones, scaled down for small and short screens
+    and 6/8-player boards; on desktop the panels sit at the board's corners instead of
+    the screen edges.
+- Verified with screenshots at 360x740, 375x667, 390x844 and 1280x800: home, setup,
+  create, join, profile, settings, friends, lobby (host and joiner), and 4/6/8-player
+  games; joining by link with the name prompt against a second player.
+  Tests: 69 passing (+3 rotation tests for 4/6/8 boards).
+
+[Tuning] Slower token movement - COMPLETED
+- Token hops slowed from 118 ms to 200 ms per square (120 ms with Reduce motion), and the
+  hop out of the yard from 430 ms to 570 ms, so moves are easy to follow on a phone.
+- The server's animation allowance was raised to match (205 ms per square, 800 ms for
+  leaving the yard), so bots and turn timers still wait for the move to finish.
+- Tests: 69 passing.
+
+[Fix] Empty seats showed duplicate yard colors - COMPLETED
+- Bug: in an online game started without bots filling the empty seats (e.g. 2 players in
+  team mode), the empty seats had no color and were drawn in the first color (red), so the
+  board showed three red yards.
+- Fix: when a game starts, every seat gets its own color. Players keep the color they
+  picked; empty seats get their default seat color if free, otherwise the first unused
+  color (new seatColors helper in shared/rules.js). The board renderer applies the same
+  rule as a safety net.
+- Tests: 70 passing (+1: 2-player team game without bots gets 4 distinct colors).
+
+[Config] Google sign-in enabled locally - COMPLETED
+- Google OAuth client created (redirect URIs: http://localhost:8080/auth/google/callback and
+  https://ludo.playunofree.com/auth/google/callback). Client ID and secret added to .env.
+- Verified: the server starts with Google enabled and /auth/google redirects to Google with
+  the correct callback address, scopes "openid profile" and PKCE.
+- Production still needs the same two variables in /etc/ludo-party.env and
+  PUBLIC_URL=https://ludo.playunofree.com.
+
+OPEN DECISIONS
+- The Atlas database user and password were shared in chat; rotate the password and
+  consider a dedicated user limited to the `ludo` database.
+- Google and Facebook app credentials (client IDs/secrets) still need to be registered;
+  until then only guest play (and DEV_LOGIN locally) is available. Facebook friend
+  suggestions also need Meta App Review approval for the user_friends permission.
+- Hosting for MongoDB in production (self-hosted on the server or MongoDB Atlas).
+- Final game name (currently the "Ludo Party" placeholder in shared/config.js).
+- Production domain for ALLOWED_ORIGINS, nginx server_name and certificates.
+- Rooms are in memory: a server restart ends games in progress (clients return to Home).
+  Persisting rooms would need a store such as Redis, which would be a new dependency.

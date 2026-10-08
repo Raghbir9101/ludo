@@ -1,0 +1,20 @@
+{
+  "name": "ludo-party",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Multiplayer web Ludo for 4, 6 and 8 players",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "test": "node --test \"tests/*.test.js\"",
+    "loadtest": "node scripts/loadtest.js",
+    "icons": "node scripts/make-icons.js"
+  },
+  "engines": {
+    "node": ">=22.9"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0",
+    "ws": "^8.18.0"
+  }
+}

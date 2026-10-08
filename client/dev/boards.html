@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Board review: 4 / 6 / 8</title>
+<style>
+  body { margin: 0; font-family: system-ui, sans-serif; background: linear-gradient(160deg, #ffe7f3, #e3f0ff); }
+  .row { display: flex; flex-wrap: wrap; gap: 16px; padding: 16px; justify-content: center; }
+  figure { margin: 0; text-align: center; }
+  canvas { width: 360px; height: 360px; display: block; touch-action: none; }
+  figcaption { font-weight: 700; color: #2a2540; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="row">
+  <figure><canvas id="b4"></canvas><figcaption>4 players (52 squares)</figcaption></figure>
+  <figure><canvas id="b6"></canvas><figcaption>6 players (78 squares)</figcaption></figure>
+  <figure><canvas id="b8"></canvas><figcaption>8 players (104 squares)</figcaption></figure>
+</div>
+<script type="module">
+  import { BoardView, layoutTokens } from '/js/board/render.js';
+  import { cellPos } from '/js/board/geometry.js';
+  import { cellOf, homeProgress, colStart, DEFAULT_SEAT_COLORS } from '/shared/rules.js';
+
+  for (const n of [4, 6, 8]) {
+    const view = new BoardView(document.getElementById('b' + n), { gestures: true });
+    view.setBoard(n, DEFAULT_SEAT_COLORS[n]);
+    const items = [];
+    for (let s = 0; s < n; s++) {
+      const prog = [-1, s * 3 + 2, s === 0 ? s * 3 + 2 : colStart(n) + 1, s % 2 ? homeProgress(n) : -1];
+      prog.forEach((p, t) => {
+        const cell = cellOf(n, s, p);
+        const pos = cellPos(view.board, s, cell, t);
+        items.push({ x: pos.x, y: pos.y, color: DEFAULT_SEAT_COLORS[n][s], cellKey: cell.k + (cell.i ?? s) + (cell.k === 'y' || cell.k === 'h' ? ':' + t : ''), scale: cell.k === 'h' ? 0.55 : cell.k === 'y' ? 0.9 : 1 });
+      });
+    }
+    const draw = () => view.draw(layoutTokens(view.board, items));
+    view.onViewChange = draw;
+    draw();
+  }
+</script>
+</body>
+</html>
