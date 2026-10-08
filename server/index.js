@@ -2,6 +2,7 @@
 import './env.js';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
+import { realpathSync } from 'node:fs';
 import { WebSocketServer } from 'ws';
 import { serveStatic } from './static.js';
 import { RoomManager } from './rooms.js';
@@ -117,10 +118,22 @@ export function createServer(cfg = {}, { store = createStore(), env = process.en
   return { server, wss, manager, auth, social, store };
 }
 
-const isMain = process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url;
+// Process managers (pm2) load this file through their own wrapper, so argv[1] isn't us.
+const runDirect = () => {
+  try {
+    return !!process.argv[1] && pathToFileURL(realpathSync(process.argv[1])).href === import.meta.url;
+  } catch {
+    return false;
+  }
+};
+const isMain = process.env.pm_id !== undefined || runDirect();
 if (isMain) {
   const { server } = createServer();
-  server.listen(PORT, HOST, () => console.log(`Ludo server listening on http://localhost:${PORT}`));
+  server.on('error', (err) => {
+    console.error(err.code === 'EADDRINUSE' ? `Port ${PORT} is already in use. Set a free PORT in .env.` : err);
+    process.exit(1);
+  });
+  server.listen(PORT, HOST, () => console.log(`Ludo server listening on http://${HOST || 'localhost'}:${PORT}`));
   const shutdown = () => {
     console.log('Shutting down');
     server.close();

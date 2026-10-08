@@ -340,6 +340,15 @@ LUDO PARTY - PROGRESS LOG
 - Verified: started from the server/ folder, the .env was picked up (Google sign-in
   enabled, Atlas connected). Tests: 71 passing.
 
+[Fix] Server did not start under pm2 - COMPLETED
+- Bug: server/index.js only started when run directly (`node server/index.js`). pm2 loads
+  scripts through its own wrapper, so the check failed and the process sat idle with no
+  output; the domain then showed whatever else answered on that port ("OK").
+- Fix: the server also starts when run under pm2 (pm_id set) and compares real file
+  paths. A port already in use now prints a clear message and exits instead of failing silently.
+- Verified: loaded through a wrapper with pm_id set, the server listens and serves the
+  game page. Tests: 71 passing.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
