@@ -330,6 +330,16 @@ LUDO PARTY - PROGRESS LOG
 - Secrets stay local: .env and node_modules are ignored; only .env.example (placeholders)
   is in the repo. Checked that no database password or Google secret is in any pushed file.
 
+[Config] .env loading with dotenv, runs on Node 18 - COMPLETED
+- New dependency (requested): dotenv. server/env.js loads the project's .env by its own
+  path, so it works no matter which folder the server is started from (e.g. pm2 started
+  inside server/). Real environment variables still take priority over the file.
+- `npm start` is now plain `node server/index.js`; the minimum Node version is lowered from
+  22.9 to 18.17 (the server needed Node 22 only for the --env-file flag). This lets the
+  production VPS run it with its existing Node 18 under pm2.
+- Verified: started from the server/ folder, the .env was picked up (Google sign-in
+  enabled, Atlas connected). Tests: 71 passing.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

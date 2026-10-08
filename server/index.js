@@ -1,4 +1,5 @@
 // HTTP static server + WebSocket game server.
+import './env.js';
 import http from 'node:http';
 import { pathToFileURL } from 'node:url';
 import { WebSocketServer } from 'ws';
