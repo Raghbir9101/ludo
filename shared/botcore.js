@@ -4,14 +4,15 @@ import { cellOf, isSafe, lastTrack, relProgress, homeProgress, stepsToHome, trac
 
 export const DIFFICULTIES = ['easy', 'medium', 'hard'];
 
-// How likely opponents are to hit absolute track square `abs` next turn.
+// How likely other players (teammates included, since they can capture too) are to hit
+// absolute track square `abs` next turn.
 function threatAt(st, owner, abs, hard) {
   const n = st.n;
   if (isSafe(n, abs)) return 0;
   const L = lastTrack(n);
   let threat = 0;
   for (const q of st.players) {
-    if (!q.active || !isOpponent(st, owner, q.seat)) continue;
+    if (!q.active || q.seat === owner) continue;
     const tp = relProgress(n, q.seat, abs);
     if (tp > L && !(st.opts.captureToEnterHome && !q.captured)) continue;
     for (const p of q.tokens) {
@@ -48,6 +49,11 @@ export function scoreMove(st, m, hard = false) {
   const lead = st.opts.teamMode ? leadingTeam(st) : null;
   for (const e of events) {
     if (e.t === 'captured') {
+      if (!isOpponent(st, owner, e.seat)) {
+        // Knocking out a partner sets the team back: only when nothing else is possible.
+        s -= 160 + (stepsToHome(n, -1) - stepsToHome(n, st.players[e.seat].tokens[e.token]));
+        continue;
+      }
       s += 100 + stepsToHome(n, -1) - stepsToHome(n, st.players[e.seat].tokens[e.token]) * 0.5;
       if (lead != null && st.players[e.seat].team === lead) s += 35;
     }

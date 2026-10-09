@@ -349,6 +349,15 @@ LUDO PARTY - PROGRESS LOG
 - Verified: loaded through a wrapper with pm_id set, the server listens and serves the
   game page. Tests: 71 passing.
 
+[Rules] Teammates can capture each other
+- Change: in team mode, landing on a partner's token now sends it home, just like any other
+  player's. Teammates no longer share a square, and two partner tokens on one square
+  form a blockade that blocks the whole table, the team included.
+- Bots: they treat partners as a capture threat too, and only capture a partner when it
+  is the only move left.
+- Tests: the old "teammates stack" test now asserts the capture. Added tests for the
+  partner blockade and for bots avoiding partner captures. 73 passing.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

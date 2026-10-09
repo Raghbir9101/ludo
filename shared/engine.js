@@ -34,6 +34,8 @@ export function createGame({ n, seats = [], opts = {}, firstTurn = 0 }) {
 }
 
 export const isOpponent = (st, a, b) => a !== b && st.players[a].team !== st.players[b].team;
+// Captures and blockades apply between any two seats, teammates included.
+const isRival = (a, b) => a !== b;
 
 export function teamMembers(st, team) {
   return st.players.filter((p) => p.active && p.team === team);
@@ -83,7 +85,7 @@ function tokensOnTrack(st, abs) {
 function hasOpponentBlockade(st, owner, abs) {
   const counts = new Map();
   for (const tk of tokensOnTrack(st, abs)) {
-    if (!isOpponent(st, owner, tk.seat)) continue;
+    if (!isRival(owner, tk.seat)) continue;
     const c = (counts.get(tk.seat) || 0) + 1;
     if (c >= 2) return true;
     counts.set(tk.seat, c);
@@ -259,7 +261,7 @@ export function move(state, { seat, token }) {
   const dest = m.path[m.path.length - 1];
   if (dest.k === 't' && !isSafe(n, dest.i)) {
     for (const tk of tokensOnTrack(st, dest.i)) {
-      if (!isOpponent(st, seat, tk.seat)) continue;
+      if (!isRival(seat, tk.seat)) continue;
       st.players[tk.seat].tokens[tk.token] = -1;
       captured = true;
       ev.push({ t: 'captured', seat: tk.seat, token: tk.token, by: seat, at: dest.i });

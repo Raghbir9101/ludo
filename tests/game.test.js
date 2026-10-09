@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createGame, roll, move, legalMoves, applyEvents } from '../server/game.js';
+import { chooseMove } from '../shared/botcore.js';
 import {
   startSquare, starSquare, isSafe, homeProgress, lastTrack, colStart, cellOf, trackLen,
 } from '../shared/rules.js';
@@ -184,7 +185,7 @@ test('quick mode: tokens start on board and first to N home wins', () => {
   assert.equal(r.state.ranks[0], 2);
 });
 
-test('team mode: teammates do not capture each other and stack instead', () => {
+test('team mode: teammates capture each other like anyone else', () => {
   const n = 4;
   const st = game(n, { teamMode: true });
   assert.equal(st.players[0].team, st.players[2].team);
@@ -193,8 +194,33 @@ test('team mode: teammates do not capture each other and stack instead', () => {
   setTokens(st, 0, [17, -1, -1, -1]);
   setTokens(st, 2, [(target - startSquare(2) + trackLen(n)) % trackLen(n), -1, -1, -1]);
   const r = move(roll(st, 3).state, { seat: 0, token: 0 });
-  assert.ok(!types(r.events).includes('captured'));
-  assert.notEqual(r.state.players[2].tokens[0], -1);
+  assert.ok(types(r.events).includes('captured'));
+  assert.equal(r.state.players[2].tokens[0], -1);
+});
+
+test('team mode: a teammate blockade blocks you too', () => {
+  const n = 4;
+  const st = game(n, { teamMode: true, blockades: true });
+  const wall = (startSquare(0) + 19) % trackLen(n);
+  const rel2 = (wall - startSquare(2) + trackLen(n)) % trackLen(n);
+  setTokens(st, 0, [17, 5, -1, -1]);
+  setTokens(st, 2, [rel2, rel2, -1, -1]);
+  const r = roll(st, 3);
+  assert.ok(r.state.legal.some((m) => m.seat === 0 && m.token === 1));
+  assert.ok(!r.state.legal.some((m) => m.seat === 0 && m.token === 0), 'cannot pass the partner blockade');
+});
+
+test('team bots avoid capturing a partner when another move exists', () => {
+  const n = 4;
+  const st = game(n, { teamMode: true });
+  const target = (startSquare(0) + 20) % trackLen(n);
+  setTokens(st, 0, [17, 5, -1, -1]);
+  setTokens(st, 2, [(target - startSquare(2) + trackLen(n)) % trackLen(n), -1, -1, -1]);
+  const r = roll(st, 3);
+  for (const d of ['medium', 'hard']) {
+    const m = chooseMove(r.state, d, () => 0.5);
+    assert.equal(m.token, 1, `${d} bot moved the other token`);
+  }
 });
 
 test('team mode: team wins only when all members are home', () => {
