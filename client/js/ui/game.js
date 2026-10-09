@@ -405,12 +405,16 @@ export class GameScreen {
     this.panels?.forEach((p) => p?.die.destroy());
     this.panels = [];
     const b = this.view.board;
-    const seats = this.st.players.filter((p) => p.active).map((p) => p.seat);
-    const placed = seats.map((s) => ({ s, x: b.yards[s].center.x, y: b.yards[s].center.y }));
+    // Every yard gets a slot (empty yards an invisible one) so each panel stays next to its own yard.
+    const placed = b.yards.map((y, s) => ({ s, x: y.center.x, y: y.center.y, on: !!this.st.players[s]?.active }));
     const tops = placed.filter((p) => p.y < -0.01).sort((a, c) => a.x - c.x);
     const bots = placed.filter((p) => p.y >= -0.01).sort((a, c) => a.x - c.x);
     const make = (p, row) => {
       const s = p.s;
+      if (!p.on) {
+        row.append(h('div', { class: 'player-panel inactive', 'aria-hidden': 'true' }, h('div', { class: 'pp-pin' })));
+        return;
+      }
       const c = colorOf(this.st.players[s].color);
       const ring = svgRing();
       const face = h('span', { class: 'pp-face' });

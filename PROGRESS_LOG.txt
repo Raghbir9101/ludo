@@ -358,6 +358,16 @@ LUDO PARTY - PROGRESS LOG
 - Tests: the old "teammates stack" test now asserts the capture. Added tests for the
   partner blockade and for bots avoiding partner captures. 73 passing.
 
+[Fix] Player panels next to the wrong yard; dice shown for everyone
+- Bug: with empty seats (e.g. 3 players on a 4-player board), a lone panel in the top or
+  bottom row slid to the left edge, so the purple player's photo and dice sat above the
+  empty green yard.
+- Fix: every yard now keeps a slot in its row (empty yards get an invisible placeholder),
+  so each panel always lines up with its own yard.
+- Change: the dice box now appears only on the player whose turn it is; the other
+  players' panels show just their photo or avatar.
+- Verified: 3-player online game at 390x844, with the empty yard on the top-left.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

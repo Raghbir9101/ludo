@@ -367,6 +367,7 @@ button, input { font-family: inherit; }
 .pp-last { width: 50px; height: 50px; }
 .pp-last .dice-canvas { width: 50px; height: 50px; cursor: default; }
 .player-panel.active .pp-last { display: none; }
+.player-panel:not(.active) .pp-dicebox { display: none; }
 .pp-dice { position: relative; width: 56px; height: 56px; flex: none; z-index: 3; }
 .dice-canvas { width: 56px; height: 56px; display: block; cursor: pointer; touch-action: manipulation; }
 .dice-canvas.can-roll { animation: dicepulse 1s ease-in-out infinite; }
