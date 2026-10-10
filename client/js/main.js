@@ -209,13 +209,20 @@ async function boot() {
   const wait = Math.max(0, 450 - (performance.now() - t0));
   setProgress(1);
   await new Promise((r) => setTimeout(r, wait));
-  history.replaceState({ screen: 'home' }, '');
+  // Home-screen shortcuts (manifest "shortcuts") open a mode directly.
+  const play = new URLSearchParams(location.search).get('play');
+  history.replaceState({ screen: 'home' }, '', location.search ? location.pathname : undefined);
   setActive('home');
 
   const m = location.pathname.match(/^\/r\/([A-Za-z0-9]{6})\/?$/);
   if (m) {
     const o = await online();
     o.joinByLink(m[1].toUpperCase());
+  } else if (play === 'solo') {
+    go('setup');
+    screens.setup.show('solo');
+  } else if (play === 'join') {
+    online().then((o) => o.openJoin());
   } else {
     // Rejoin a game in progress after a reload, if the server still holds our seat.
     const sess = localStorage.getItem('ludo.session');

@@ -397,6 +397,23 @@ LUDO PARTY - PROGRESS LOG
   offered but not added.
 - Tests: 76 passing (new tests for pairs, mixed squares, the 6 with no move, and bot pairing).
 
+[PWA] Installable app with new icons (Android and iOS)
+- New app icon matching the blue Ludo King-style theme: a Ludo board, a red and a blue
+  pawn and a die on a glowing blue tile. Sizes: 192/512 (rounded, gold frame), maskable
+  192/512 (Android adaptive icons, art kept inside the safe zone), 180 apple-touch-icon
+  (full-bleed for iOS), and 16/32 favicons.
+- The icon artwork lives in client/dev/icon.html. `npm run icons` (server running) renders it
+  to client/icons through headless Chrome, with no new dependencies.
+- Manifest: blue theme and splash colors, maskable icons, standalone display, and
+  long-press shortcuts ("Play vs Computer", "Join a room") that open those screens.
+- iOS: apple-touch-icon 180, black-translucent status bar, home-screen title.
+- Settings: INSTALL APP now also appears on iPhone/iPad and shows the Safari steps
+  (Share > Add to Home Screen). Android/desktop Chrome still use the native install prompt.
+- Service worker cache bumped (v2) and icon URLs versioned, so installed copies get the new icons.
+- Verified: Chrome reports no installability or manifest errors, the service worker is active,
+  and the shortcut opens the Computer setup screen.
+- Note: installing on a phone needs HTTPS on the live domain (certbot step still pending).
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

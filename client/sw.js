@@ -1,6 +1,6 @@
 // Service worker: precaches the app shell so solo mode works offline.
 // App code is network-first (always fresh when online); fonts and icons are cache-first.
-const CACHE = 'ludo-shell-v1';
+const CACHE = 'ludo-shell-v2';
 const STATIC = /\.(woff2|png)$/;
 
 self.addEventListener('install', (e) => {

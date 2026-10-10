@@ -1,6 +1,6 @@
 // Settings screen: sound, vibration and gameplay preferences. Name, avatar and account
 // live on the Profile screen.
-import { $ } from './dom.js';
+import { $, h, modal } from './dom.js';
 import { prefs, savePrefs, prefersReducedMotion } from '../prefs.js';
 import { audio } from '../audio.js';
 import { motion } from '../anim.js';
@@ -45,8 +45,12 @@ export function settingsScreen() {
   });
   if (!('vibrate' in navigator)) $('#set-vibrate').closest('label').hidden = true;
 
+  // Install: Android/desktop Chrome give a prompt; iOS Safari needs Share > Add to Home Screen.
   let installPrompt = null;
   const install = $('#set-install');
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (ios && !standalone) install.hidden = false;
   window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     installPrompt = e;
@@ -55,11 +59,21 @@ export function settingsScreen() {
   window.addEventListener('appinstalled', () => { install.hidden = true; });
   install.addEventListener('click', async () => {
     audio.play('tap');
-    if (!installPrompt) return;
-    installPrompt.prompt();
-    await installPrompt.userChoice.catch(() => {});
-    installPrompt = null;
-    install.hidden = true;
+    if (installPrompt) {
+      installPrompt.prompt();
+      await installPrompt.userChoice.catch(() => {});
+      installPrompt = null;
+      install.hidden = true;
+    } else if (ios) {
+      modal({
+        title: 'Install on iPhone',
+        body: h('ol', { class: 'install-steps' },
+          h('li', {}, 'Open this page in ', h('b', {}, 'Safari'), '.'),
+          h('li', {}, 'Tap the ', h('b', {}, 'Share'), ' button (square with an arrow).'),
+          h('li', {}, 'Choose ', h('b', {}, 'Add to Home Screen'), ', then tap ', h('b', {}, 'Add'), '.')),
+        actions: [{ label: 'GOT IT', cls: 'c-green' }],
+      });
+    }
   });
 
   return {
