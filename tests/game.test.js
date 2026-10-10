@@ -34,11 +34,39 @@ test('a token can only leave the yard on a 6', () => {
   assert.equal(r.state.turn, 0);
 });
 
-test('a 6 with no legal move still grants another roll', () => {
-  const st = setTokens(game(), 0, [homeProgress(4), homeProgress(4), homeProgress(4), homeProgress(4) - 1]);
+test('a 6 with no legal move ends the turn', () => {
+  const st = setTokens(game(), 0, [homeProgress(4), homeProgress(4), homeProgress(4), homeProgress(4) - 4]);
   const r = roll(st, 6);
-  assert.deepEqual(types(r.events), ['rolled', 'noMoves', 'bonus']);
-  assert.equal(r.state.turn, 0);
+  assert.deepEqual(types(r.events), ['rolled', 'noMoves', 'turnChanged']);
+  assert.equal(r.state.turn, 1);
+  assert.equal(r.state.sixes, 0);
+});
+
+test('a pair of tokens on one square cannot be captured', () => {
+  const st = game();
+  const target = (startSquare(0) + 5) % trackLen(4);
+  const p1 = (target - startSquare(1) + trackLen(4)) % trackLen(4);
+  setTokens(st, 0, [2, -1, -1, -1]);
+  setTokens(st, 1, [p1, p1, -1, -1]);
+  const r = move(roll(st, 3).state, { seat: 0, token: 0 });
+  assert.ok(!types(r.events).includes('captured'));
+  assert.deepEqual(r.state.players[1].tokens.slice(0, 2), [p1, p1]);
+  assert.equal(r.state.players[0].tokens[0], 5);
+  assert.equal(r.state.turn, 1, 'no capture bonus');
+});
+
+test('on a shared square only the lone token is captured, not the pair', () => {
+  const st = game();
+  const target = (startSquare(0) + 5) % trackLen(4);
+  const rel = (s) => (target - startSquare(s) + trackLen(4)) % trackLen(4);
+  setTokens(st, 0, [2, -1, -1, -1]);
+  setTokens(st, 1, [rel(1), rel(1), -1, -1]);
+  setTokens(st, 2, [rel(2), -1, -1, -1]);
+  const r = move(roll(st, 3).state, { seat: 0, token: 0 });
+  const caps = r.events.filter((e) => e.t === 'captured');
+  assert.deepEqual(caps.map((e) => e.seat), [2]);
+  assert.equal(r.state.players[2].tokens[0], -1);
+  assert.equal(r.state.players[1].tokens[0], rel(1));
 });
 
 test('three consecutive sixes forfeit the third move and end the turn', () => {

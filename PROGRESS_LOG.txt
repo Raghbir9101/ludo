@@ -384,6 +384,19 @@ LUDO PARTY - PROGRESS LOG
 - The name bar in the top bar no longer stretches across the screen. It is now a compact
   pill beside the settings gear, as wide as the name (long names are cut off with "...").
 
+[Rules] Pairs are safe; a 6 with no move ends the turn
+- Change: two or more tokens of one player on the same square form a pair that cannot be
+  captured (by opponents or teammates). A token landing there just shares the square. If a
+  lone token of another player is also on that square, only the lone token is captured.
+- Bug: a 6 with no legal move (e.g. the only token in the home column needing 4 or less)
+  still gave a bonus roll. Any roll with no legal move now ends the turn.
+- Bots: a square already holding two of their own tokens counts as safe, so bots form
+  pairs to protect threatened tokens.
+- Dice: reviewed and left fair (each face 1 in 6, crypto random on the server and in the
+  browser), matching Ludo King's stated certified RNG. An optional "lucky dice" assist was
+  offered but not added.
+- Tests: 76 passing (new tests for pairs, mixed squares, the 6 with no move, and bot pairing).
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

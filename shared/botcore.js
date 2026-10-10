@@ -9,6 +9,11 @@ export const DIFFICULTIES = ['easy', 'medium', 'hard'];
 function threatAt(st, owner, abs, hard) {
   const n = st.n;
   if (isSafe(n, abs)) return 0;
+  const own = st.players[owner].tokens.filter((p) => {
+    const c = cellOf(n, owner, p);
+    return c.k === 't' && c.i === abs;
+  }).length;
+  if (own >= 2) return 0;
   const L = lastTrack(n);
   let threat = 0;
   for (const q of st.players) {

@@ -172,14 +172,9 @@ export function roll(state, value) {
   }
   st.legal = legalMoves(st);
   if (st.legal.length === 0) {
+    // No usable move ends the turn, even on a 6.
     ev.push({ t: 'noMoves', seat });
-    if (value === 6) {
-      st.dice = null;
-      st.phase = 'roll';
-      ev.push({ t: 'bonus', seat, reason: 'six' });
-    } else {
-      endTurn(st, ev);
-    }
+    endTurn(st, ev);
   } else {
     st.phase = 'move';
   }
@@ -260,8 +255,14 @@ export function move(state, { seat, token }) {
   let captured = false;
   const dest = m.path[m.path.length - 1];
   if (dest.k === 't' && !isSafe(n, dest.i)) {
+    const bySeat = new Map();
     for (const tk of tokensOnTrack(st, dest.i)) {
-      if (!isRival(seat, tk.seat)) continue;
+      if (isRival(seat, tk.seat)) bySeat.set(tk.seat, [...(bySeat.get(tk.seat) || []), tk]);
+    }
+    for (const tks of bySeat.values()) {
+      // Two or more tokens of one player on a square form a pair that can't be captured.
+      if (tks.length !== 1) continue;
+      const tk = tks[0];
       st.players[tk.seat].tokens[tk.token] = -1;
       captured = true;
       ev.push({ t: 'captured', seat: tk.seat, token: tk.token, by: seat, at: dest.i });

@@ -21,6 +21,15 @@ test('hard bot takes a token home when it can', () => {
   assert.equal(chooseMove(r, 'hard').token, 0);
 });
 
+test('bots form a pair to protect a threatened token', () => {
+  const st = createGame({ n: 4 });
+  const abs = (p) => (startSquare(0) + p) % trackLen(4);
+  st.players[0].tokens = [14, 17, -1, -1];
+  st.players[2].tokens = [(abs(12) - startSquare(2) + trackLen(4)) % trackLen(4), -1, -1, -1];
+  const r = roll(st, 3).state;
+  for (const d of ['medium', 'hard']) assert.equal(chooseMove(r, d, () => 0.5).token, 0, d);
+});
+
 test('bots of every difficulty finish full games', () => {
   for (const diff of ['easy', 'medium', 'hard']) {
     let st = createGame({ n: 6 });
