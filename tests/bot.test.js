@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, roll, move } from '../shared/engine.js';
+import { createGame, roll, move, maxDieFace } from '../shared/engine.js';
 import { chooseMove } from '../shared/botcore.js';
 import { startSquare, trackLen, homeProgress } from '../shared/rules.js';
 
@@ -35,7 +35,7 @@ test('bots of every difficulty finish full games', () => {
     let st = createGame({ n: 6 });
     let guard = 0;
     while (!st.over && guard++ < 40000) {
-      st = roll(st, 1 + Math.floor(Math.random() * 6)).state;
+      st = roll(st, 1 + Math.floor(Math.random() * maxDieFace(st))).state;
       if (st.phase === 'move') st = move(st, chooseMove(st, diff)).state;
     }
     assert.ok(st.over, diff);
@@ -48,7 +48,7 @@ test('hard beats easy most of the time', () => {
   for (let g = 0; g < games; g++) {
     let st = createGame({ n: 4, seats: [{}, { active: false }, {}, { active: false }], firstTurn: g % 2 ? 0 : 2 });
     while (!st.over) {
-      st = roll(st, 1 + Math.floor(Math.random() * 6)).state;
+      st = roll(st, 1 + Math.floor(Math.random() * maxDieFace(st))).state;
       if (st.phase === 'move') st = move(st, chooseMove(st, st.turn === 0 ? 'hard' : 'easy')).state;
     }
     if (st.ranks[0] === 0) hardWins++;

@@ -215,12 +215,6 @@ export class GameScreen {
         this.callout('No moves', e.seat, true);
         await wait(dur(650));
         break;
-      case 'forfeit':
-        audio.play('noMove');
-        this.callout('3 sixes! Turn lost', e.seat, true);
-        announce(`${this.seatName(e.seat)} rolled three sixes. Turn lost.`);
-        await wait(dur(900));
-        break;
       case 'moved':
         await this.animMove(e);
         break;

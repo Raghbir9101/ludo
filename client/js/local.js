@@ -1,14 +1,17 @@
 // Offline game driver: runs the shared rules engine in the browser with bots in the other seats.
-import { createGame, roll, move, distinctMoves } from '/shared/engine.js';
+import { createGame, roll, move, distinctMoves, maxDieFace } from '/shared/engine.js';
 import { EMOJIS, QUICK_CHAT } from '/shared/rules.js';
 import { chooseMove, botDelay } from './bot.js';
 import { Emitter } from './emitter.js';
 import { prefs } from './prefs.js';
 
-function rollDie() {
+// Uniform over the allowed faces (1-6, or 1-5 after two sixes in a row).
+function rollDie(st) {
+  const faces = maxDieFace(st);
+  const limit = 256 - (256 % faces);
   const buf = new Uint8Array(1);
-  do crypto.getRandomValues(buf); while (buf[0] >= 252);
-  return (buf[0] % 6) + 1;
+  do crypto.getRandomValues(buf); while (buf[0] >= limit);
+  return (buf[0] % faces) + 1;
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -49,7 +52,7 @@ export class LocalGame extends Emitter {
   roll() {
     const st = this.state;
     if (st.over || st.phase !== 'roll' || !this.mySeats.has(st.turn) || this.busy) return;
-    this.apply(roll(st, rollDie()));
+    this.apply(roll(st, rollDie(st)));
   }
 
   move(m) {
@@ -87,7 +90,7 @@ export class LocalGame extends Emitter {
       await sleep(window.__ludo?.fast ? 0 : botDelay());
       this.busy = false;
       if (gen !== this.gen || this.left || this.paused) return;
-      if (st.phase === 'roll') this.apply(roll(st, rollDie()));
+      if (st.phase === 'roll') this.apply(roll(st, rollDie(st)));
       else this.apply(move(st, chooseMove(st, this.difficulty[seat])));
       return;
     }

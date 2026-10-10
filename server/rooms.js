@@ -701,7 +701,7 @@ export class RoomManager {
     const st = room.game;
     let res;
     try {
-      res = action.t === 'roll' ? roll(st, rollDie()) : move(st, { seat: action.seat, token: action.token });
+      res = action.t === 'roll' ? roll(st, rollDie(st)) : move(st, { seat: action.seat, token: action.token });
     } catch (err) {
       console.error('engine rejected action', action, err.message);
       return;

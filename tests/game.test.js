@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame, roll, move, legalMoves, applyEvents } from '../server/game.js';
+import { createGame, roll, move, legalMoves, applyEvents, maxDieFace, rollDie } from '../server/game.js';
 import { chooseMove } from '../shared/botcore.js';
 import {
   startSquare, starSquare, isSafe, homeProgress, lastTrack, colStart, cellOf, trackLen,
@@ -69,14 +69,17 @@ test('on a shared square only the lone token is captured, not the pair', () => {
   assert.equal(r.state.players[1].tokens[0], rel(1));
 });
 
-test('three consecutive sixes forfeit the third move and end the turn', () => {
+test('after two sixes in a row the third roll can only be 1-5', () => {
   let st = setTokens(game(), 0, [10, -1, -1, -1]);
+  assert.equal(maxDieFace(st), 6);
   st = move(roll(st, 6).state, { seat: 0, token: 0 }).state;
   st = move(roll(st, 6).state, { seat: 0, token: 0 }).state;
   assert.equal(st.players[0].tokens[0], 22);
-  const r = roll(st, 6);
-  assert.deepEqual(types(r.events), ['rolled', 'forfeit', 'turnChanged']);
-  assert.equal(r.state.players[0].tokens[0], 22);
+  assert.equal(maxDieFace(st), 5);
+  assert.throws(() => roll(st, 6), /bad dice value/);
+  for (let i = 0; i < 300; i++) assert.ok(rollDie(st) <= 5);
+  const r = move(roll(st, 5).state, { seat: 0, token: 0 });
+  assert.equal(r.state.players[0].tokens[0], 27);
   assert.equal(r.state.turn, 1);
   assert.equal(r.state.sixes, 0);
 });
@@ -318,7 +321,7 @@ test('random full games always terminate with complete ranks', () => {
       let st = game(n, { teamMode, blockades: n === 6 });
       let guard = 0;
       while (!st.over && guard++ < 50000) {
-        st = roll(st, 1 + Math.floor(Math.random() * 6)).state;
+        st = roll(st, rollDie(st)).state;
         if (st.phase === 'move') st = move(st, st.legal[Math.floor(Math.random() * st.legal.length)]).state;
       }
       assert.ok(st.over, `n=${n} team=${teamMode} finished`);

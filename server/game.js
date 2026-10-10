@@ -5,8 +5,8 @@ import * as engine from '../shared/engine.js';
 
 export * from '../shared/engine.js';
 
-export const rollDie = () => randomInt(1, 7);
+export const rollDie = (state) => randomInt(1, (state ? engine.maxDieFace(state) : 6) + 1);
 
 export function rollWithServerDice(state) {
-  return engine.roll(state, rollDie());
+  return engine.roll(state, rollDie(state));
 }

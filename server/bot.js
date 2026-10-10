@@ -17,7 +17,6 @@ export function animMs(events, scale = 1) {
       case 'captured': ms += 1150; break;
       case 'reachedHome': ms += 280; break;
       case 'noMoves': ms += 680; break;
-      case 'forfeit': ms += 920; break;
       case 'turnChanged': ms += 140; break;
       case 'playerFinished': ms += 720; break;
       case 'teamFinished': ms += 620; break;

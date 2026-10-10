@@ -414,6 +414,13 @@ LUDO PARTY - PROGRESS LOG
   and the shortcut opens the Computer setup screen.
 - Note: installing on a phone needs HTTPS on the live domain (certbot step still pending).
 
+[Rules] No third six in a row
+- Change: after two sixes in a row, the next roll is always 1-5 (equally likely), so a
+  player can never roll three sixes. This replaces the old "three sixes cancels the turn" rule.
+- Applied in the shared engine (it rejects a 6 there), on the server dice for online games,
+  and on the browser dice for offline games. The unused "3 sixes! Turn lost" message was removed.
+- Tests: the old forfeit test now checks that the third roll is limited to 1-5. 76 passing.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

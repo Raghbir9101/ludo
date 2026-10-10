@@ -156,20 +156,18 @@ function endTurn(st, ev) {
   ev.push({ t: 'turnChanged', seat: st.turn, prev });
 }
 
+// Highest face the next roll may show: after two sixes in a row, a third 6 is impossible.
+export const maxDieFace = (st) => (st.sixes >= 2 ? 5 : 6);
+
 export function roll(state, value) {
   if (state.over) throw new Error('game over');
   if (state.phase !== 'roll') throw new Error('not in roll phase');
-  if (!Number.isInteger(value) || value < 1 || value > 6) throw new Error('bad dice value');
+  if (!Number.isInteger(value) || value < 1 || value > maxDieFace(state)) throw new Error('bad dice value');
   const st = clone(state);
   const seat = st.turn;
   const ev = [{ t: 'rolled', seat, value }];
   st.dice = value;
   st.sixes = value === 6 ? st.sixes + 1 : 0;
-  if (st.sixes === 3) {
-    ev.push({ t: 'forfeit', seat });
-    endTurn(st, ev);
-    return { state: st, events: ev };
-  }
   st.legal = legalMoves(st);
   if (st.legal.length === 0) {
     // No usable move ends the turn, even on a 6.
