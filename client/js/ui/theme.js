@@ -302,6 +302,7 @@ function logoDie(ctx, x, y, s, a) {
 
 // Splits the title into individually colored letters.
 export function colorTitle(el, text) {
+  if (el.closest('.ball-title')) return ballTitle(el, text);
   const cols = ['#ff4b55', '#33d16a', '#ffd21f', '#3fb4ff'];
   let i = 0;
   el.replaceChildren(...[...text].map((ch) => {
@@ -311,5 +312,27 @@ export function colorTitle(el, text) {
     else span.className = 'sp';
     return span;
   }));
+  el.setAttribute('aria-label', text);
+}
+
+// Home logo: first word as letters on white balls, the rest as a small gold tag.
+function ballTitle(el, text) {
+  const cols = ['#e31b23', '#0e9a42', '#f0a300', '#1580dc'];
+  const [first, ...rest] = text.trim().split(/\s+/);
+  const balls = [...first].map((ch, i) => {
+    const span = document.createElement('span');
+    span.className = 'ball';
+    span.textContent = ch;
+    span.style.setProperty('--lc', cols[i % cols.length]);
+    return span;
+  });
+  const parts = [...balls];
+  if (rest.length) {
+    const tag = document.createElement('span');
+    tag.className = 'word-tag';
+    tag.textContent = rest.join(' ');
+    parts.push(tag);
+  }
+  el.replaceChildren(...parts);
   el.setAttribute('aria-label', text);
 }

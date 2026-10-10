@@ -157,62 +157,126 @@ button, input { font-family: inherit; }
 .round-btn.small { width: 44px; height: 44px; font-size: 20px; border-width: 3px; }
 
 /* Home */
-#scr-home { overflow-y: auto; }
-.home-top { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; }
-.profile-chip {
-  display: flex; align-items: center; gap: 8px; cursor: pointer;
-  border: 3px solid var(--gold); border-radius: 99px;
-  background: linear-gradient(180deg, var(--navy-2), var(--navy));
-  padding: 3px 16px 3px 3px; font-size: 17px; font-weight: 600; color: #fff;
-  box-shadow: 0 0 0 2px var(--gold-d), 0 4px 10px rgba(0,0,0,.3);
+/* Home: Ludo King style. Top bar, ball-letter logo over the board, mode tiles, bottom tab bar. */
+#scr-home { padding-bottom: 0; }
+.home-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+.home-top { display: flex; align-items: center; gap: 10px; padding: 10px 12px 4px; }
+.home-pic {
+  position: relative; width: 50px; height: 50px; flex: none; padding: 0; cursor: pointer;
+  border: 3px solid var(--gold); border-radius: 10px; overflow: visible;
+  background: linear-gradient(180deg, #4b2a8a, #2b145c);
+  box-shadow: 0 0 0 2px var(--gold-d), 0 4px 10px rgba(0,0,0,.35);
+}
+.home-pic .avatar { width: 100%; height: 100%; border-radius: 7px; font-size: 28px; box-shadow: none; }
+.home-pic img.avatar, .home-pic .avatar img { object-fit: cover; }
+.online-dot {
+  position: absolute; top: -5px; right: -5px; width: 14px; height: 14px; border-radius: 50%;
+  background: #8796b8; border: 2px solid #fff;
+}
+.online-dot.on { background: #34e05a; box-shadow: 0 0 6px #34e05a; }
+.top-icon {
+  width: 42px; height: 42px; flex: none; padding: 0; border: 0; background: none; cursor: pointer;
+  display: grid; place-items: center; transition: transform 70ms;
+}
+.top-icon svg { width: 34px; height: 34px; fill: #e8f1ff; stroke: var(--navy-d); stroke-width: 1.2; paint-order: stroke; filter: drop-shadow(0 2px 0 var(--navy-d)); }
+.top-icon:active { transform: scale(.92); }
+.name-bar {
+  flex: 1; min-width: 0; max-width: 300px; margin-left: auto; height: 36px; cursor: pointer; padding: 0 14px;
+  border: 2px solid rgba(120,170,255,.55); border-radius: 99px;
+  background: linear-gradient(180deg, #071b4f, #0c2b70);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.5);
+  color: #fff; font-size: 17px; font-weight: 700; text-align: right;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .avatar {
   display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
   background: linear-gradient(180deg, #ffe7c2, #f4b98a); font-size: 22px; flex: none;
   box-shadow: inset 0 -3px 0 rgba(0,0,0,.15);
 }
-.home-hero { display: flex; flex-direction: column; align-items: center; margin-top: auto; }
-.menu { display: flex; flex-direction: column; gap: 18px; padding: 3vh 14px 18px; max-width: 520px; width: 100%; margin: 0 auto auto; }
-@media (min-height: 760px) {
-  .tile { min-height: 158px; }
-  .tile.wide { min-height: 142px; }
-}
-.offline-note { text-align: center; color: #fff; text-shadow: var(--outline); }
+.home-hero { display: flex; flex-direction: column; align-items: center; margin-top: auto; padding-top: 8px; }
+.home-hero .logo-canvas.big { width: min(300px, 76vw); margin-top: -22px; }
 
-.tile-row { display: grid; gap: 12px; }
-.tile-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.tile-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* Title letters as glossy white balls (LUDO King style). */
+.ball-title { position: relative; z-index: 1; display: flex; justify-content: center; text-transform: uppercase; font-size: 0; margin: 0; }
+.ball-title .app-name { position: relative; display: flex; justify-content: center; gap: 3px; padding-right: 8px; }
+.ball-title .app-name > .ball {
+  display: inline-grid; place-items: center; width: clamp(52px, 15vw, 64px); aspect-ratio: 1; border-radius: 50%;
+  font-size: clamp(36px, 10.5vw, 46px); line-height: 1; padding-bottom: .04em;
+  color: var(--lc, #ee1c25); -webkit-text-stroke: 0; text-shadow: 0 2px 0 rgba(0,0,0,.18);
+  background: radial-gradient(circle at 38% 30%, #ffffff 0%, #f3f5fb 45%, #c9cfdd 100%);
+  box-shadow: 0 0 0 3px #0a2766, 0 5px 0 3px #0a2766, 0 9px 12px rgba(0,0,0,.35);
+}
+.ball-title .app-name > .ball:nth-child(odd) { transform: translateY(4px); }
+.ball-title .app-name > .ball:nth-child(even) { transform: translateY(-3px); }
+.ball-title .word-tag {
+  position: absolute; right: -14px; top: -16px; transform: rotate(-6deg);
+  font-size: 19px; letter-spacing: 1px; color: var(--gold);
+  -webkit-text-stroke: 4px var(--navy-d); paint-order: stroke fill; text-shadow: 0 3px 0 var(--navy-d);
+}
+
+.menu { display: flex; flex-direction: column; gap: 14px; padding: 2vh 12px 16px; max-width: 520px; width: 100%; margin: 0 auto auto; }
+.offline-note { text-align: center; color: #fff; text-shadow: var(--outline); margin: 0 0 10px; }
+
+.tile-row { display: grid; gap: 10px; }
+.tile-row.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.tile-row.two { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 68%; margin: 0 auto; gap: 14px; }
+.tile-cell { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
 .tile {
-  position: relative; cursor: pointer; color: #fff; text-align: center; padding: 6px 4px 10px; min-width: 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 0;
-  min-height: 138px; border-radius: 14px;
-  border: 4px solid var(--gold);
+  position: relative; cursor: pointer; color: #fff; text-align: center; padding: 0; min-width: 0; width: 100%;
+  display: flex; flex-direction: column; align-items: stretch; overflow: hidden;
+  aspect-ratio: 1 / .9; border-radius: 12px;
+  border: 3px solid var(--gold);
   background:
     radial-gradient(ellipse at 50% 30%, rgba(255,255,255,.35), transparent 60%),
-    linear-gradient(180deg, #49b4ff 0%, #1f7fe6 55%, #1052b6 100%);
-  box-shadow: 0 0 0 2px var(--gold-d), 0 6px 0 2px var(--gold-d), 0 12px 20px rgba(0,0,0,.35), inset 0 0 0 2px rgba(255,255,255,.25);
+    linear-gradient(180deg, #49b4ff 0%, #1f7fe6 60%, #1052b6 100%);
+  box-shadow: 0 0 0 2px var(--gold-d), 0 5px 0 2px var(--gold-d), 0 10px 16px rgba(0,0,0,.35);
   transition: transform 80ms, box-shadow 80ms, filter 120ms;
 }
 .tile::before {
-  content: ''; position: absolute; inset: 4px; border-radius: 9px; pointer-events: none;
-  background-image: var(--backdrop, none); background-size: 180px 180px; opacity: .8;
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--backdrop, none); background-size: 160px 160px; opacity: .7;
 }
 .tile:hover { filter: brightness(1.07); }
-.tile:active { transform: translateY(4px); box-shadow: 0 0 0 2px var(--gold-d), 0 2px 0 2px var(--gold-d), 0 4px 8px rgba(0,0,0,.3); }
-.tile-art { position: relative; width: 100%; max-width: 140px; aspect-ratio: 140 / 100; flex: 1 1 auto; min-height: 0; }
+.tile:active { transform: translateY(4px); box-shadow: 0 0 0 2px var(--gold-d), 0 1px 0 2px var(--gold-d), 0 4px 8px rgba(0,0,0,.3); }
+.tile-art { position: relative; flex: 1 1 0; min-height: 0; width: auto; max-width: 100%; aspect-ratio: 140 / 100; margin: 4px auto 0; }
 .tile-name {
-  position: relative; font-size: clamp(14px, 4.2vw, 21px); font-weight: 700; letter-spacing: .5px; line-height: 1.05;
+  position: relative; flex: none; display: grid; place-items: center; min-height: 34%; padding: 3px 2px 4px;
+  font-size: clamp(12px, 3.9vw, 19px); font-weight: 700; letter-spacing: .4px; line-height: 1.02;
+  background: linear-gradient(180deg, #ffe066 0%, #ffc21c 45%, #f29a0c 100%);
+  border-top: 2px solid #fff3b0;
   -webkit-text-stroke: 4px var(--navy-d); paint-order: stroke fill;
-  text-shadow: 0 3px 0 var(--navy-d);
+  text-shadow: 0 2px 0 var(--navy-d);
 }
 .tile-cap {
-  position: relative; margin-top: 4px; font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap;
-  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
-  background: rgba(4,20,70,.55); border-radius: 99px; padding: 1px 9px;
+  font-size: 12px; font-weight: 600; color: #fff; white-space: nowrap; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,.6);
 }
 .tile-cap::before { content: '•'; color: #7dff6d; margin-right: 4px; }
-.tile.wide { min-height: 128px; }
-.tile.wide .tile-art { max-width: 120px; }
+.tile.wide { aspect-ratio: 1 / .86; }
+
+/* Bottom tab bar */
+.tabbar {
+  flex: none; display: flex; justify-content: center;
+  background: linear-gradient(180deg, #0d2c78, #071a4c);
+  border-top: 2px solid #3c6fd8; box-shadow: 0 -4px 12px rgba(0,0,0,.35);
+  padding-bottom: var(--safe-bottom);
+}
+.tab {
+  position: relative; flex: 1; max-width: 140px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 7px 4px 6px; border: 0; background: none; cursor: pointer; color: #fff;
+  font-size: 13px; font-weight: 700; letter-spacing: .5px; text-shadow: var(--outline);
+  border-left: 1px solid rgba(255,255,255,.08);
+}
+.tab:first-child { border-left: 0; }
+.tab svg { width: 30px; height: 30px; fill: #ffd54a; stroke: var(--navy-d); stroke-width: 1.2; paint-order: stroke; filter: drop-shadow(0 2px 0 var(--navy-d)); }
+.tab.active {
+  background: linear-gradient(180deg, #46a8ff, #1667d6);
+  border-radius: 12px 12px 0 0; margin-top: -8px; padding-top: 12px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,.4), 0 -3px 8px rgba(0,0,0,.3);
+}
+.tab.active svg { width: 34px; height: 34px; }
+.tab .badge { top: 2px; right: calc(50% - 30px); }
+.tab:focus-visible, .top-icon:focus-visible, .home-pic:focus-visible, .name-bar:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
 
 /* Bars and panels */
 .bar { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; gap: 8px; }
@@ -493,9 +557,6 @@ body.reduced .pp-dice.your-roll::after { animation: none; }
 #profile-photo .toggle { margin-top: 6px; }
 #scr-settings .panel > .btn[data-go="profile"] { width: 100%; margin-bottom: 14px; }
 
-/* Home header tools */
-.top-tools { display: flex; gap: 10px; }
-#friends-btn { position: relative; }
 .badge {
   position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; padding: 0 5px; border-radius: 99px;
   background: var(--red); color: #fff; border: 2px solid #fff; font-size: 13px; font-weight: 700; line-height: 18px;
@@ -576,9 +637,6 @@ h3.sub { margin: 10px 2px 6px; font-size: 15px; color: var(--gold); text-transfo
   .pp-dicebox { width: 60px; height: 60px; }
   .pp-last, .pp-last .dice-canvas { width: 46px; height: 46px; }
   .pp-dice, .dice-canvas { width: 52px; height: 52px; }
-}
-@media (max-width: 380px) and (max-height: 700px) {
-  .tile { min-height: 120px; }
 }
 @media (max-height: 640px) {
   .pp-pin { width: 48px; height: 52px; }

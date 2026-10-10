@@ -29,31 +29,45 @@
   </section>
 
   <section class="screen" id="scr-home" aria-label="Home">
-    <header class="home-top">
-      <button class="profile-chip" id="profile-chip" aria-label="Edit your profile">
-        <span class="avatar" id="home-avatar"></span><span id="home-name">Player</span>
-      </button>
-      <div class="top-tools">
-        <button class="icon-btn" id="friends-btn" aria-label="Friends"><span aria-hidden="true">👥</span><span class="badge" id="friends-badge" hidden></span></button>
-        <button class="icon-btn" data-go="settings" aria-label="Settings">⚙</button>
+    <div class="home-body">
+      <header class="home-top">
+        <button class="home-pic" id="profile-chip" aria-label="Edit your profile">
+          <span class="avatar" id="home-avatar"></span><span class="online-dot" id="home-dot" aria-hidden="true"></span>
+        </button>
+        <button class="top-icon" data-go="settings" aria-label="Settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1l-.4-2.7h-4l-.4 2.7a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L4.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.7h4l.4-2.7a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5ZM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7Z"/></svg>
+        </button>
+        <button class="name-bar" data-go="profile" aria-label="Edit your profile"><span id="home-name">Player</span></button>
+      </header>
+      <div class="home-hero">
+        <h1 class="title ball-title"><span class="app-name">Ludo Party</span></h1>
+        <canvas class="logo-canvas big" aria-hidden="true"></canvas>
       </div>
-    </header>
-    <div class="home-hero">
-      <canvas class="logo-canvas big" aria-hidden="true"></canvas>
-      <h1 class="title"><span class="app-name">Ludo Party</span></h1>
+      <nav class="menu tiles" aria-label="Main menu">
+        <div class="tile-row three">
+          <div class="tile-cell"><button class="tile" data-go="create"><canvas class="tile-art" data-art="create" aria-hidden="true"></canvas><span class="tile-name">CREATE ROOM</span></button><span class="tile-cap">Invite friends</span></div>
+          <div class="tile-cell"><button class="tile" data-mode="team"><canvas class="tile-art" data-art="team" aria-hidden="true"></canvas><span class="tile-name">TEAM UP</span></button><span class="tile-cap">Teams vs bots</span></div>
+          <div class="tile-cell"><button class="tile" data-go="join"><canvas class="tile-art" data-art="join" aria-hidden="true"></canvas><span class="tile-name">JOIN ROOM</span></button><span class="tile-cap">Enter a code</span></div>
+        </div>
+        <div class="tile-row two">
+          <div class="tile-cell"><button class="tile wide" data-mode="solo"><canvas class="tile-art" data-art="computer" aria-hidden="true"></canvas><span class="tile-name">COMPUTER</span></button><span class="tile-cap">Play vs bots</span></div>
+          <div class="tile-cell"><button class="tile wide" data-mode="pass"><canvas class="tile-art" data-art="pass" aria-hidden="true"></canvas><span class="tile-name">PASS N PLAY</span></button><span class="tile-cap">One device</span></div>
+        </div>
+      </nav>
+      <p class="offline-note" id="offline-note" hidden>You're offline. Solo and team vs bots still work.</p>
     </div>
-    <nav class="menu tiles" aria-label="Main menu">
-      <div class="tile-row three">
-        <button class="tile" data-go="create"><canvas class="tile-art" data-art="create" aria-hidden="true"></canvas><span class="tile-name">CREATE ROOM</span><span class="tile-cap">Invite friends</span></button>
-        <button class="tile" data-mode="team"><canvas class="tile-art" data-art="team" aria-hidden="true"></canvas><span class="tile-name">TEAM UP</span><span class="tile-cap">Teams vs bots</span></button>
-        <button class="tile" data-go="join"><canvas class="tile-art" data-art="join" aria-hidden="true"></canvas><span class="tile-name">JOIN ROOM</span><span class="tile-cap">Enter a code</span></button>
-      </div>
-      <div class="tile-row two">
-        <button class="tile wide" data-mode="solo"><canvas class="tile-art" data-art="computer" aria-hidden="true"></canvas><span class="tile-name">COMPUTER</span><span class="tile-cap">Play vs bots</span></button>
-        <button class="tile wide" data-mode="pass"><canvas class="tile-art" data-art="pass" aria-hidden="true"></canvas><span class="tile-name">PASS N PLAY</span><span class="tile-cap">One device</span></button>
-      </div>
+    <nav class="tabbar" aria-label="Sections">
+      <button class="tab active" aria-current="page" aria-label="Home">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 11.5h3V21h5.5v-6h3v6H19v-9.5h3Z"/></svg><span>HOME</span>
+      </button>
+      <button class="tab" id="friends-btn" aria-label="Friends">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="8" r="3.6"/><circle cx="16.5" cy="9" r="3"/><path d="M1.5 20c0-4 3.1-6.5 7-6.5s7 2.5 7 6.5Z"/><path d="M16.8 20h5.7c0-3.4-2.4-5.6-5.6-5.6-1 0-1.9.2-2.7.6 1.6 1.2 2.6 2.9 2.6 5Z"/></svg><span>FRIENDS</span>
+        <span class="badge" id="friends-badge" hidden></span>
+      </button>
+      <button class="tab" data-go="profile" aria-label="Profile">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="7.5" r="4.5"/><path d="M3.5 21c0-4.7 3.8-7.5 8.5-7.5s8.5 2.8 8.5 7.5Z"/></svg><span>PROFILE</span>
+      </button>
     </nav>
-    <p class="offline-note" id="offline-note" hidden>You're offline. Solo and team vs bots still work.</p>
   </section>
 
   <section class="screen" id="scr-setup" aria-labelledby="setup-title">

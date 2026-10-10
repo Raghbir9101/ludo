@@ -368,6 +368,18 @@ LUDO PARTY - PROGRESS LOG
   players' panels show just their photo or avatar.
 - Verified: 3-player online game at 390x844, with the empty yard on the top-left.
 
+[UI] Home screen redesigned in the Ludo King style
+- Top bar: gold-framed square profile photo with an online dot, a settings gear, and the
+  player's name in a dark bar (where Ludo King shows coins and gems).
+- Logo: "LUDO" as colored letters on white balls over the board, with "PARTY" as a small
+  gold tag (like "KING").
+- Mode tiles: blue art area with a gold label band. The caption now sits under each tile
+  (like the player counts in Ludo King). The second row (Computer, Pass N Play) is centered.
+- New bottom tab bar: Home, Friends (with the request badge) and Profile.
+- Left out because we don't have them: coins, gems, shop, mail, tournaments, season
+  pass, spin wheel, events, voice rooms and inventory.
+- Verified at 360x740, 390x844 and 1280x800; the Friends tab opens the Friends screen. Tests: 73 passing.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
