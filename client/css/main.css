@@ -181,11 +181,11 @@ button, input { font-family: inherit; }
 .top-icon svg { width: 34px; height: 34px; fill: #e8f1ff; stroke: var(--navy-d); stroke-width: 1.2; paint-order: stroke; filter: drop-shadow(0 2px 0 var(--navy-d)); }
 .top-icon:active { transform: scale(.92); }
 .name-bar {
-  flex: 1; min-width: 0; max-width: 300px; margin-left: auto; height: 36px; cursor: pointer; padding: 0 14px;
+  flex: 0 1 auto; min-width: 0; max-width: 220px; height: 36px; cursor: pointer; padding: 0 16px;
   border: 2px solid rgba(120,170,255,.55); border-radius: 99px;
   background: linear-gradient(180deg, #071b4f, #0c2b70);
   box-shadow: inset 0 2px 4px rgba(0,0,0,.5);
-  color: #fff; font-size: 17px; font-weight: 700; text-align: right;
+  color: #fff; font-size: 17px; font-weight: 700; text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .avatar {

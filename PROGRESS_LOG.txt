@@ -380,6 +380,10 @@ LUDO PARTY - PROGRESS LOG
   pass, spin wheel, events, voice rooms and inventory.
 - Verified at 360x740, 390x844 and 1280x800; the Friends tab opens the Friends screen. Tests: 73 passing.
 
+[UI] Home name bar sized to the name
+- The name bar in the top bar no longer stretches across the screen. It is now a compact
+  pill beside the settings gear, as wide as the name (long names are cut off with "...").
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
