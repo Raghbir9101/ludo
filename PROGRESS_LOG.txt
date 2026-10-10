@@ -421,6 +421,27 @@ LUDO PARTY - PROGRESS LOG
   and on the browser dice for offline games. The unused "3 sixes! Turn lost" message was removed.
 - Tests: the old forfeit test now checks that the third roll is limited to 1-5. 76 passing.
 
+[Online] Reconnection for signed-in players
+- Seat follows the account: a player signed in with Google gets their room seat back on any
+  reconnect, even from another device, from the installed app (iOS keeps its own storage),
+  or after browser data was cleared. Opening the game on a second device moves the seat
+  there, and the old one is told "now open on another tab or device".
+- Longer hold: signed-in seats are held for 5 minutes after a drop (guests: 60 seconds).
+- Take back from the bot: if the hold runs out mid-game and a bot takes over, the same
+  account takes the seat back when it reconnects. Leaving on purpose or being kicked still
+  gives the seat up for good.
+- Client connection: reconnects immediately when the app returns to the foreground, the
+  window gets focus, or the network comes back. A ping check closes and replaces sockets
+  that died silently (common on mobile). The two-tab tug-of-war is fixed: a tab that was
+  replaced stops reconnecting by itself.
+- Signed-in players connect at startup, so the server can put them straight back into their game.
+- UI: a "Reconnecting..." banner while the connection is down in a room or game, then
+  "Reconnected". If the seat was lost, the player is sent home with a clear message
+  instead of being left on a frozen game.
+- Verified: 5 new server tests (81 passing). In a browser test, the network was cut for
+  about 60 seconds mid-game; the banner showed, then the game reconnected and caught up
+  on the moves made in the meantime.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.

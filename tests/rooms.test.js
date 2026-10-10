@@ -220,6 +220,81 @@ test('reconnect with session restores the seat; seat is held then given to a bot
   assert.equal(room.seats[bSeat].kind, 'bot');
 });
 
+function rawConn(mgr, user) {
+  const c = { inbox: [], user, send(m) { this.inbox.push(JSON.parse(JSON.stringify(m))); }, close() { this.closed = true; }, last(t) { return [...this.inbox].reverse().find((m) => m.t === t); } };
+  mgr.connect(c);
+  return c;
+}
+
+function startedGame(mgr, bUser) {
+  const a = fakeConn(mgr, 'A');
+  a.msg({ t: 'create', opts: { n: 4, timer: 0 } });
+  const code = a.last('room').room.code;
+  const b = rawConn(mgr, bUser);
+  mgr.handleRaw(b, JSON.stringify({ t: 'hello', name: 'B' }));
+  mgr.handleRaw(b, JSON.stringify({ t: 'join', code }));
+  mgr.handleRaw(b, JSON.stringify({ t: 'ready', on: true }));
+  a.msg({ t: 'start' });
+  return { a, b, code, bSeat: b.last('game').you.seat };
+}
+
+test('signed-in player gets the seat back from another device (no session token)', () => {
+  const mgr = setup({ holdMs: 60, accountHoldMs: 5000 });
+  const user = { id: 'u1', name: 'Raghbir', pic: null };
+  const { b, bSeat } = startedGame(mgr, user);
+  mgr.disconnect(b);
+  const phone = rawConn(mgr, user);
+  mgr.handleRaw(phone, JSON.stringify({ t: 'hello', name: 'B' }));
+  assert.ok(phone.last('welcome').room, 'welcome names the room');
+  assert.equal(phone.last('game').you.seat, bSeat);
+});
+
+test('opening the game on a second device moves the seat there', () => {
+  const mgr = setup();
+  const user = { id: 'u2', name: 'Sam', pic: null };
+  const { b, bSeat } = startedGame(mgr, user);
+  const tab = rawConn(mgr, user);
+  mgr.handleRaw(tab, JSON.stringify({ t: 'hello', name: 'B' }));
+  assert.equal(tab.last('game').you.seat, bSeat);
+  assert.equal(b.last('left').reason, 'elsewhere');
+});
+
+test('signed-in seats are held longer than guest seats', async () => {
+  const mgr = setup({ holdMs: 30, accountHoldMs: 400 });
+  const { b, bSeat, code } = startedGame(mgr, { id: 'u3', name: 'Ann', pic: null });
+  mgr.disconnect(b);
+  await sleep(120);
+  assert.equal(mgr.rooms.get(code).seats[bSeat].kind, 'human', 'still held');
+});
+
+test('after a bot takes over, the same account can reclaim the seat', async () => {
+  const mgr = setup({ accountHoldMs: 40 });
+  const user = { id: 'u4', name: 'Kay', pic: null };
+  const { a, b, bSeat, code } = startedGame(mgr, user);
+  mgr.disconnect(b);
+  await sleep(100);
+  const room = mgr.rooms.get(code);
+  assert.equal(room.seats[bSeat].kind, 'bot');
+  const back = rawConn(mgr, user);
+  mgr.handleRaw(back, JSON.stringify({ t: 'hello', name: 'B' }));
+  assert.equal(back.last('game').you.seat, bSeat);
+  assert.equal(room.seats[bSeat].kind, 'human');
+  assert.equal(room.seats[bSeat].name, 'Kay');
+  assert.equal(a.last('meta').players[bSeat].bot, false);
+});
+
+test('leaving on purpose gives the seat up for good', () => {
+  const mgr = setup();
+  const user = { id: 'u5', name: 'Lee', pic: null };
+  const { b, bSeat, code } = startedGame(mgr, user);
+  mgr.handleRaw(b, JSON.stringify({ t: 'leave' }));
+  mgr.disconnect(b);
+  const back = rawConn(mgr, user);
+  mgr.handleRaw(back, JSON.stringify({ t: 'hello', name: 'B' }));
+  assert.equal(back.last('welcome').room, null);
+  assert.equal(mgr.rooms.get(code).seats[bSeat].kind, 'bot');
+});
+
 test('turn timer: three timeouts mark the player AFK and a bot takes over', async () => {
   const mgr = setup({ timerScale: 0.002, autoMoveDelay: 0 });
   const a = fakeConn(mgr, 'A');

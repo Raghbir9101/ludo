@@ -349,19 +349,35 @@ export function initOnline({ go, goHome, startGame, screens }) {
     if (ctrl) { ctrl.dispose(); ctrl = null; }
     if (m.reason === 'kicked') toast('The host removed you from the room.');
     else if (m.reason === 'closed') toast('The room was closed.');
-    else if (m.reason === 'elsewhere') toast('You opened this game in another tab.');
+    else if (m.reason === 'elsewhere') toast('This game is now open on another tab or device.', 3500);
     if (m.reason !== 'left' && wasIn) goHome();
   });
 
   net.on('welcome', (m) => {
-    if (!m.room && !room && !ctrl) localStorage.removeItem('ludo.room');
+    if (m.room) return;
+    localStorage.removeItem('ludo.room');
+    // Back online but the server no longer holds our seat (held too long as a guest, or the
+    // room closed): don't leave the player on a dead lobby or game.
+    if (room || ctrl) {
+      room = null;
+      if (ctrl) { ctrl.dispose(); ctrl = null; }
+      goHome();
+      toast('You were away too long and lost your seat in that room.', 4000);
+    }
   });
 
-  let statusTimer = 0;
+  // A banner while the connection is down in a room or game; a short note when it's back.
+  const banner = $('#net-banner');
+  let bannerTimer = 0;
   net.on('status', (s) => {
-    clearTimeout(statusTimer);
-    if (s === 'reconnecting' && (room || ctrl)) statusTimer = setTimeout(() => toast('Reconnecting...', 1800), 800);
-    if (s === 'online' && ctrl) ctrl.resync();
+    clearTimeout(bannerTimer);
+    if (s === 'online') {
+      if (!banner.hidden) toast('Reconnected', 1500);
+      banner.hidden = true;
+      if (ctrl) ctrl.resync();
+    } else if (room || ctrl) {
+      bannerTimer = setTimeout(() => { banner.hidden = false; }, 700);
+    }
   });
 
   return {

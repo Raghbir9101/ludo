@@ -12,6 +12,8 @@ const DIFFS = ['easy', 'medium', 'hard'];
 
 export const DEFAULT_CONFIG = {
   holdMs: 60_000,
+  // Signed-in players get longer to come back (app switch, network change, phone call).
+  accountHoldMs: 5 * 60_000,
   emptyRoomMs: 5 * 60_000,
   animScale: 1,
   timerScale: 1,
@@ -126,6 +128,12 @@ export class RoomManager {
     let sess = msg.session && this.sessions.get(String(msg.session));
     // A session that belongs to another account (sign-out / switch) is not reused.
     if (sess && sess.uid && sess.uid !== uid) sess = null;
+    // Signed-in players are recognised by account, so a new device, the installed app or
+    // cleared storage still finds the seat they were playing in.
+    if (uid) {
+      const mine = this.accountSession(uid);
+      if (mine && mine !== sess && (!sess || (!this.inLiveRoom(sess) && this.inLiveRoom(mine)))) sess = mine;
+    }
     if (!sess) {
       const token = randomBytes(18).toString('base64url');
       sess = { token, pid: randomBytes(6).toString('hex'), roomCode: null, conn: null };
@@ -141,19 +149,55 @@ export class RoomManager {
     }
     sess.conn = conn;
     sess.uid = uid;
+    sess.seen = Date.now();
     sess.name = conn.user?.name || clean(msg.name, 14) || 'Player';
     sess.avatar = clean(msg.avatar, 8) || '🙂';
     sess.pic = conn.user?.pic || null;
     conn.pid = sess.pid;
     conn.session = sess;
-    conn.send({ t: 'welcome', session: sess.token, pid: sess.pid, room: sess.roomCode, user: conn.user || null });
-    this.social?.connected(conn).catch((err) => console.error('presence error', err));
+    let target = null;
     if (sess.roomCode && this.rooms.has(sess.roomCode)) {
       const room = this.rooms.get(sess.roomCode);
       const si = this.seatOf(room, conn.pid);
-      if (si >= 0) this.attach(room, conn, si);
+      if (si >= 0) target = { room, si };
       else sess.roomCode = null;
     }
+    if (!target && uid) target = this.reclaimSeat(conn, uid);
+    conn.send({ t: 'welcome', session: sess.token, pid: sess.pid, room: sess.roomCode, user: conn.user || null });
+    this.social?.connected(conn).catch((err) => console.error('presence error', err));
+    if (target) this.attach(target.room, conn, target.si);
+  }
+
+  inLiveRoom(sess) {
+    return !!sess.roomCode && this.rooms.has(sess.roomCode);
+  }
+
+  // The account's most useful session: one seated in a live room, else the most recent.
+  accountSession(uid) {
+    let best = null;
+    for (const s of this.sessions.values()) {
+      if (s.uid !== uid) continue;
+      if (this.inLiveRoom(s)) return s;
+      if (!best || (s.seen || 0) > (best.seen || 0)) best = s;
+    }
+    return best;
+  }
+
+  // A bot that took over this account's seat after a disconnect hands it back.
+  reclaimSeat(conn, uid) {
+    for (const room of this.rooms.values()) {
+      if (room.phase !== 'playing') continue;
+      const si = room.seats.findIndex((s) => s.kind === 'bot' && s.reclaimUid === uid);
+      if (si < 0) continue;
+      const seat = room.seats[si];
+      Object.assign(seat, {
+        kind: 'human', pid: conn.pid, uid, reclaimUid: null, autoBot: false,
+        afk: false, timeouts: 0, ready: true, connected: true,
+      });
+      conn.session.roomCode = room.code;
+      return { room, si };
+    }
+    return null;
   }
 
   profile(conn, msg) {
@@ -318,7 +362,10 @@ export class RoomManager {
     const seat = room.seats[si];
     seat.connected = false;
     clearTimeout(seat.discTimer);
-    if (hold) seat.discTimer = setTimeout(() => this.releaseSeat(room, si, seat.pid), this.cfg.holdMs);
+    if (hold) {
+      const ms = seat.uid ? this.cfg.accountHoldMs : this.cfg.holdMs;
+      seat.discTimer = setTimeout(() => this.releaseSeat(room, si, seat.pid, true), ms);
+    }
     this.broadcastRoomOrMeta(room);
     // A running turn timer keeps ticking so a quick reconnect resumes the same turn.
     if (room.phase === 'playing' && room.game.turn === si && !room.timers.turn) this.scheduleNext(room, []);
@@ -339,14 +386,17 @@ export class RoomManager {
     conn.send({ t: 'left', reason: 'left' });
   }
 
-  releaseSeat(room, si, pid) {
+  // `reclaimable`: the seat timed out after a disconnect, so a signed-in owner may take it
+  // back from the bot. Leaving on purpose or being kicked gives it up for good.
+  releaseSeat(room, si, pid, reclaimable = false) {
     const seat = room.seats[si];
     if (!seat || seat.pid !== pid) return;
     clearTimeout(seat.discTimer);
     const sess = [...this.sessions.values()].find((s) => s.pid === pid);
     if (sess && sess.roomCode === room.code) sess.roomCode = null;
     if (room.phase === 'playing') {
-      Object.assign(seat, { kind: 'bot', pid: null, uid: null, pic: null, connected: true, afk: false, autoBot: true, discTimer: null, name: `${seat.name} (bot)` });
+      const reclaimUid = reclaimable ? seat.uid || null : null;
+      Object.assign(seat, { kind: 'bot', pid: null, uid: null, pic: null, connected: true, afk: false, autoBot: true, discTimer: null, reclaimUid, name: `${seat.name} (bot)` });
     } else {
       room.seats[si] = emptySeat();
     }
@@ -721,5 +771,5 @@ export class RoomManager {
 }
 
 function emptySeat() {
-  return { kind: 'empty', pid: null, uid: null, pic: null, name: '', avatar: '', color: -1, ready: false, connected: false, afk: false, timeouts: 0, discTimer: null, autoBot: false };
+  return { kind: 'empty', pid: null, uid: null, pic: null, name: '', avatar: '', color: -1, ready: false, connected: false, afk: false, timeouts: 0, discTimer: null, autoBot: false, reclaimUid: null };
 }

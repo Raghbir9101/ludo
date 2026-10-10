@@ -141,9 +141,15 @@ async function boot() {
   });
   screens.friends = friendsScreen({ online, inLobby: () => !!onlineApi?.inLobby() });
   initSocial({ online, isPlaying: () => current === 'game' });
+  // The server may put us back into a room on any (re)connect, e.g. a signed-in player on a
+  // new device. Make sure the lobby/game handlers exist, then ask for the room again.
+  net.on('welcome', (m) => {
+    if (m.room && !onlineApi) online().then(() => net.send('resync')).catch(() => {});
+  });
   const login = new URLSearchParams(location.search).get('login');
   account.load().then((u) => {
     if (login === 'ok' && u) toast(`Signed in as ${u.name}`);
+    if (u) online().then((o) => o.tryResume()).catch(() => {});
   });
   if (login === 'failed') toast('Sign-in was cancelled or failed. Please try again.', 3500);
   if (login) history.replaceState({}, '', location.pathname);
