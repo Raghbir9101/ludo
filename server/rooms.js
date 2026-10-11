@@ -537,8 +537,11 @@ export class RoomManager {
   }
 
   moveSeat(room, conn, from, to) {
-    if (room.host !== conn.pid || room.phase !== 'lobby') return conn.send({ t: 'error', code: 'notHost' });
+    if (room.phase !== 'lobby') return;
     if (!room.seats[from] || !room.seats[to] || from === to) return;
+    // Anyone may move themselves into an open seat; everything else is the host's call.
+    const self = from === this.seatOf(room, conn.pid) && room.seats[to].kind === 'empty';
+    if (room.host !== conn.pid && !self) return conn.send({ t: 'error', code: 'notHost' });
     [room.seats[from], room.seats[to]] = [room.seats[to], room.seats[from]];
     this.broadcastRoomOrMeta(room);
   }

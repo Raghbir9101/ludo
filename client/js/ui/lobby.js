@@ -1,7 +1,7 @@
 // Online screens: create room, join room, lobby. Hands off to the game screen on start.
 import { COLORS } from '/shared/rules.js';
-import { buildBoard, rotateBoard, povSteps } from '../board/geometry.js';
 import { net } from '../net.js';
+import { motion } from '../anim.js';
 import { OnlineGame } from '../state.js';
 import { $, h, segmented, toast, announce, avatarEl, modal, closeModal } from './dom.js';
 import { prefs, savePrefs, displayName, AVATARS } from '../prefs.js';
@@ -15,7 +15,6 @@ export function initOnline({ go, goHome, startGame, screens }) {
   let room = null;
   let roomSeq = -1;
   let ctrl = null;
-  let moving = -1;
   let pendingJoin = null;
 
   if (!prefs.name) savePrefs({ name: `Player${100 + Math.floor(Math.random() * 900)}` });
@@ -170,6 +169,16 @@ export function initOnline({ go, goHome, startGame, screens }) {
       toast(url, 5000);
     }
   });
+  $('#lobby-copy').addEventListener('click', async () => {
+    audio.play('tap');
+    if (!room) return;
+    try {
+      await navigator.clipboard.writeText(room.code);
+      toast(`Room code ${room.code} copied`);
+    } catch {
+      toast(`Room code: ${room.code}`, 4000);
+    }
+  });
   $('#lobby-ready').addEventListener('click', () => {
     audio.play('tap');
     const me = room?.seats[room.you.seat];
@@ -182,7 +191,6 @@ export function initOnline({ go, goHome, startGame, screens }) {
   $('#lobby-fillbots').addEventListener('change', (e) => net.send('setFill', { on: e.target.checked }));
   $('#lobby-shuffle').addEventListener('click', () => {
     audio.play('tap');
-    moving = -1;
     net.send('shuffleSeats');
   });
   $('#lobby-invite').addEventListener('click', () => {
@@ -195,70 +203,331 @@ export function initOnline({ go, goHome, startGame, screens }) {
     { value: 'easy', label: 'Easy bots' }, { value: 'medium', label: 'Medium bots' }, { value: 'hard', label: 'Hard bots' },
   ], 'medium', (v) => net.send('setDifficulty', { d: v }));
 
+  // ---------- seats: cards, tap menu, drag and drop ----------
+  const TEAM = ['A', 'B'];
+  const board = $('#lobby-seats');
+  const scroller = $('#lobby-panel');
+  const coarse = matchMedia('(pointer: coarse)');
+  let drag = null;
+  let renderLater = false;
+  let suppressClickUntil = 0;
+  let landing = null;
+
+  const teamOf = (i) => (room.teams ? room.teams[i] : i % 2);
+  const inLobby = () => room?.phase === 'lobby' && !room.you.spectator && room.you.seat >= 0;
+  const canDrag = (i) => inLobby() && (room.you.host ? room.seats[i].kind !== 'empty' : i === room.you.seat);
+  const canDrop = (from, to) => from !== to && (room.you.host || room.seats[to].kind === 'empty');
+  const seatKey = (s) => (s.kind === 'empty' ? null : `${s.kind}:${s.uid || s.name}`);
+  const seatLabel = (s, i) => (s.kind === 'empty' ? `Seat ${i + 1}` : s.name);
+
+  function seatStatus(s, i) {
+    if (s.kind === 'empty') return [inLobby() && !room.you.host ? 'Tap to sit' : '', 'st-open'];
+    const mine = i === room.you.seat ? 'You · ' : '';
+    if (s.kind === 'bot') return ['Bot', 'st-bot'];
+    if (!s.connected) return [`${mine}Offline`, 'st-off'];
+    if (s.host) return [`${mine}Host`, 'st-host'];
+    return s.ready ? [`${mine}Ready ✓`, 'st-ready'] : [`${mine}Not ready`, 'st-wait'];
+  }
+
+  function seatActions(i) {
+    const r = room;
+    const you = r.you;
+    const s = r.seats[i];
+    const acts = [];
+    const add = (label, cls, fn) => acts.push({ label, cls, onClick: fn });
+    if (inLobby() && you.host) {
+      if (s.kind === 'empty') {
+        add('ADD A BOT', 'c-green', () => net.send('setBot', { seat: i, on: true }));
+        add('SIT HERE', 'c-blue', () => net.send('moveSeat', { from: you.seat, to: i }));
+      } else {
+        add(i === you.seat ? 'MOVE TO ANOTHER SEAT' : 'MOVE / SWAP SEAT', 'c-blue', () => pickSeat(i));
+        if (r.opts.teamMode) add(`SWITCH TO TEAM ${TEAM[1 - teamOf(i)]}`, 'c-blue', () => net.send('setTeam', { seat: i, team: 1 - teamOf(i) }));
+        if (s.kind === 'human' && i !== you.seat && s.connected) add('MAKE HOST', 'c-yellow', () => net.send('makeHost', { seat: i }));
+        if (s.kind === 'bot') add('REMOVE BOT', 'c-red', () => net.send('setBot', { seat: i, on: false }));
+        if (s.kind === 'human' && i !== you.seat) add('REMOVE FROM ROOM', 'c-red', () => confirmKick(i));
+      }
+    } else if (inLobby()) {
+      if (s.kind === 'empty') add('SIT HERE', 'c-green', () => net.send('moveSeat', { from: you.seat, to: i }));
+      else if (i === you.seat && r.seats.some((x) => x.kind === 'empty')) add('MOVE TO ANOTHER SEAT', 'c-blue', () => pickSeat(i));
+    }
+    const me = account.user?.id;
+    if (me && s.uid && s.uid !== me) {
+      const rel = social.relation(s.uid);
+      if (!rel) add('ADD FRIEND', 'c-purple', () => net.send('friendAdd', { id: s.uid }));
+      else if (rel === 'received') add('ACCEPT FRIEND REQUEST', 'c-purple', () => net.send('friendRespond', { id: s.uid, accept: true }));
+    }
+    return acts;
+  }
+
+  function openSeat(i) {
+    if (!room) return;
+    const s = room.seats[i];
+    const acts = seatActions(i);
+    if (!acts.length) return;
+    audio.play('tap');
+    // An open seat for a non-host has just one thing to do: sit there.
+    if (s.kind === 'empty' && !room.you.host) return acts[0].onClick();
+    const [status] = seatStatus(s, i);
+    const team = room.opts.teamMode ? ` · Team ${TEAM[teamOf(i)]}` : '';
+    modal({
+      title: s.kind === 'empty' ? `Seat ${i + 1}` : s.name,
+      body: `${s.kind === 'empty' ? 'Open seat' : status}${team}`,
+      actions: [...acts, { label: 'CLOSE', cls: 'c-blue' }],
+    });
+  }
+
+  function pickSeat(from) {
+    if (!room) return;
+    const s = room.seats[from];
+    const targets = room.seats.map((_, j) => j).filter((j) => canDrop(from, j));
+    if (!targets.length) return toast('There is no other seat to move to.');
+    modal({
+      title: `Move ${s.name}`,
+      body: 'Pick a seat. Taken seats are swapped.',
+      actions: [
+        ...targets.map((j) => {
+          const t = room.seats[j];
+          const team = room.opts.teamMode ? ` (TEAM ${TEAM[teamOf(j)]})` : '';
+          return {
+            label: t.kind === 'empty' ? `SEAT ${j + 1}: OPEN${team}` : `SWAP WITH ${t.name.toUpperCase()}${team}`,
+            cls: t.kind === 'empty' ? 'c-green' : 'c-blue',
+            onClick: () => net.send('moveSeat', { from, to: j }),
+          };
+        }),
+        { label: 'CANCEL', cls: 'c-red' },
+      ],
+    });
+  }
+
+  function confirmKick(i) {
+    const s = room?.seats[i];
+    if (!s) return;
+    modal({
+      title: `Remove ${s.name}?`,
+      body: 'They will not be able to rejoin this room.',
+      actions: [
+        { label: 'REMOVE', cls: 'c-red', onClick: () => net.send('kick', { seat: i }) },
+        { label: 'CANCEL', cls: 'c-blue' },
+      ],
+    });
+  }
+
+  function seatCard(i) {
+    const r = room;
+    const s = r.seats[i];
+    const c = s.kind !== 'empty' ? COLORS[s.color] : null;
+    const [status, st] = seatStatus(s, i);
+    const acts = seatActions(i).length > 0;
+    const draggable = canDrag(i);
+    const name = s.kind === 'empty' ? 'Open' : s.name;
+    const addBot = s.kind === 'empty' && inLobby() && r.you.host
+      ? h('button', {
+        type: 'button', class: 'sc-bot', 'aria-label': `Add a bot to seat ${i + 1}`,
+        onclick: (e) => { e.stopPropagation(); audio.play('tap'); net.send('setBot', { seat: i, on: true }); },
+      }, '+ BOT')
+      : null;
+    return h('div', {
+      class: `seat-card${s.kind === 'empty' ? ' empty' : ''}${i === r.you.seat ? ' me' : ''}${acts ? ' tappable' : ''}`,
+      'data-seat': String(i),
+      'data-key': seatKey(s),
+      'data-drag': draggable ? '' : null,
+      role: acts ? 'button' : 'group',
+      tabindex: acts ? '0' : null,
+      'aria-label': `${seatLabel(s, i)}${i === r.you.seat ? ' (you)' : ''}: ${s.kind === 'empty' ? 'open seat' : status}${r.opts.teamMode ? `, team ${TEAM[teamOf(i)]}` : ''}`,
+      style: c ? { '--seat-c': c.hex, '--seat-d': c.dark } : null,
+    },
+    s.kind === 'empty' ? h('span', { class: 'avatar sc-av' }, '+') : avatarEl(s, 'avatar sc-av', { background: c.light }),
+    h('span', { class: 'sc-info' },
+      h('span', { class: 'nm' }, name),
+      status ? h('span', { class: `sc-pill ${st}` }, status) : null),
+    addBot || (draggable ? h('span', { class: 'sc-grip', 'aria-hidden': 'true' }) : acts ? h('span', { class: 'sc-more', 'aria-hidden': 'true' }, '⋯') : null));
+  }
+
+  function renderSeats() {
+    const r = room;
+    const before = new Map();
+    board.querySelectorAll('.seat-card[data-key]').forEach((el) => before.set(el.dataset.key, el.getBoundingClientRect()));
+    if (landing) before.set(landing.key, landing.rect);
+    landing = null;
+    if (r.opts.teamMode) {
+      board.className = 'seat-board teams';
+      board.replaceChildren(...[0, 1].map((t) => {
+        const seats = r.seats.map((_, i) => i).filter((i) => teamOf(i) === t);
+        const filled = seats.filter((i) => r.seats[i].kind !== 'empty').length;
+        return h('div', { class: `team-col team-${'ab'[t]}`, 'data-team': String(t), role: 'group', 'aria-label': `Team ${TEAM[t]}` },
+          h('div', { class: 'team-head' }, h('span', {}, `TEAM ${TEAM[t]}`), h('small', {}, `${filled}/${seats.length}`)),
+          ...seats.map(seatCard));
+      }));
+    } else {
+      board.className = 'seat-board grid';
+      board.replaceChildren(...r.seats.map((_, i) => seatCard(i)));
+    }
+    if (!before.size || motion.reduced) return;
+    // Cards that changed place slide from where they were.
+    board.querySelectorAll('.seat-card[data-key]').forEach((el) => {
+      const a = before.get(el.dataset.key);
+      if (!a) return;
+      const b = el.getBoundingClientRect();
+      const dx = a.left - b.left;
+      const dy = a.top - b.top;
+      if (Math.abs(dx) + Math.abs(dy) < 2) return;
+      el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 340, easing: 'cubic-bezier(.2,.9,.3,1.15)' });
+    });
+  }
+
+  board.addEventListener('click', (e) => {
+    if (performance.now() < suppressClickUntil) return;
+    const card = e.target.closest('.seat-card.tappable');
+    if (card && !e.target.closest('button')) openSeat(+card.dataset.seat);
+  });
+  board.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('.seat-card.tappable');
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    openSeat(+card.dataset.seat);
+  });
+
+  // Pointer drag: the mouse drags straight away; touch needs a short hold (or the grip) so
+  // the list still scrolls normally.
+  board.addEventListener('pointerdown', (e) => {
+    if (drag || e.button > 0 || !room) return;
+    const card = e.target.closest('.seat-card[data-drag]');
+    if (!card || e.target.closest('button')) return;
+    const grip = !!e.target.closest('.sc-grip');
+    drag = {
+      id: e.pointerId, from: +card.dataset.seat, card, on: false, over: null,
+      x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY,
+      hold: e.pointerType !== 'mouse' && !grip, timer: 0, raf: 0,
+    };
+    if (drag.hold) {
+      card.classList.add('pressing');
+      drag.timer = setTimeout(() => { if (drag && !drag.on) beginDrag(); }, 280);
+    }
+  });
+  addEventListener('pointermove', (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    if (!drag.on) {
+      if (Math.hypot(drag.x - drag.x0, drag.y - drag.y0) < 8) return;
+      if (drag.hold) return dropDrag(false);
+      beginDrag();
+    }
+    trackDrag();
+  });
+  addEventListener('pointerup', (e) => { if (drag && e.pointerId === drag.id) dropDrag(true); });
+  addEventListener('pointercancel', (e) => { if (drag && e.pointerId === drag.id) dropDrag(false); });
+  document.addEventListener('touchmove', (e) => { if (drag?.on) e.preventDefault(); }, { passive: false });
+  board.addEventListener('contextmenu', (e) => { if (drag) e.preventDefault(); });
+
+  function beginDrag() {
+    const d = drag;
+    clearTimeout(d.timer);
+    d.card.classList.remove('pressing');
+    d.on = true;
+    const rect = d.card.getBoundingClientRect();
+    d.dx = d.x0 - rect.left;
+    d.dy = d.y0 - rect.top;
+    d.ghost = d.card.cloneNode(true);
+    d.ghost.classList.add('seat-ghost');
+    d.ghost.removeAttribute('tabindex');
+    d.ghost.setAttribute('aria-hidden', 'true');
+    d.ghost.style.width = `${rect.width}px`;
+    d.ghost.style.height = `${rect.height}px`;
+    document.body.append(d.ghost);
+    d.card.classList.add('drag-src');
+    board.classList.add('dragging');
+    board.querySelectorAll('.seat-card').forEach((el) => { if (canDrop(d.from, +el.dataset.seat)) el.classList.add('drop-ok'); });
+    if (room.opts.teamMode && room.you.host) {
+      board.querySelectorAll('.team-col').forEach((el) => { if (+el.dataset.team !== teamOf(d.from)) el.classList.add('drop-ok'); });
+    }
+    navigator.vibrate?.(12);
+    audio.play('tap');
+    trackDrag();
+    d.raf = requestAnimationFrame(autoScroll);
+  }
+
+  function trackDrag() {
+    const d = drag;
+    d.ghost.style.transform = `translate(${d.x - d.dx}px, ${d.y - d.dy}px) rotate(-3deg) scale(1.06)`;
+    const t = document.elementFromPoint(d.x, d.y)?.closest('.seat-card.drop-ok, .team-col.drop-ok') || null;
+    if (t === d.over) return;
+    d.over?.classList.remove('drop-over');
+    t?.classList.add('drop-over');
+    if (t) navigator.vibrate?.(6);
+    d.over = t;
+  }
+
+  function autoScroll() {
+    const d = drag;
+    if (!d?.on) return;
+    const r = scroller.getBoundingClientRect();
+    const bar = scroller.querySelector('.lobby-actions')?.offsetHeight || 0;
+    const top = r.top + 56;
+    const bottom = r.bottom - bar - 24;
+    const v = d.y < top ? (d.y - top) / 4 : d.y > bottom ? (d.y - bottom) / 4 : 0;
+    if (v) {
+      scroller.scrollTop += Math.max(-16, Math.min(16, v));
+      trackDrag();
+    }
+    d.raf = requestAnimationFrame(autoScroll);
+  }
+
+  function dropDrag(drop) {
+    const d = drag;
+    drag = null;
+    clearTimeout(d.timer);
+    d.card.classList.remove('pressing');
+    if (!d.on) return;
+    cancelAnimationFrame(d.raf);
+    suppressClickUntil = performance.now() + 400;
+    const t = drop && room ? d.over : null;
+    board.classList.remove('dragging');
+    board.querySelectorAll('.drop-ok, .drop-over').forEach((el) => el.classList.remove('drop-ok', 'drop-over'));
+    if (t) {
+      landing = { key: d.card.dataset.key, rect: d.ghost.getBoundingClientRect() };
+      d.ghost.remove();
+      if (t.classList.contains('team-col')) net.send('setTeam', { seat: d.from, team: +t.dataset.team });
+      else net.send('moveSeat', { from: d.from, to: +t.dataset.seat });
+      // If the server says no, put the card back.
+      setTimeout(() => { if (d.card.isConnected) { d.card.classList.remove('drag-src'); landing = null; } }, 900);
+    } else {
+      const home = d.card.getBoundingClientRect();
+      const back = d.ghost.animate(
+        [{ transform: d.ghost.style.transform }, { transform: `translate(${home.left}px, ${home.top}px)` }],
+        { duration: motion.reduced ? 1 : 200, easing: 'ease-out' },
+      );
+      back.onfinish = () => { d.ghost.remove(); d.card.classList.remove('drag-src'); };
+    }
+    if (renderLater) {
+      renderLater = false;
+      renderLobby();
+    }
+  }
+
   function renderLobby() {
     if (!room) return;
+    if (drag?.on) { renderLater = true; return; }
     const r = room;
     const you = r.you;
     $('#lobby-code').textContent = r.code;
-    const parts = [`${r.opts.n} players`, r.opts.teamMode ? 'Teams' : 'Free-for-all', r.opts.timer ? `${r.opts.timer}s timer` : 'No timer'];
-    if (r.opts.quickMode) parts.push(`Quick (${r.opts.quickMode} home)`);
+    const filled = r.seats.filter((s) => s.kind !== 'empty').length;
+    $('#lobby-count').textContent = `${filled}/${r.seats.length}`;
+    $('#lobby-count').setAttribute('aria-label', `${filled} of ${r.seats.length} seats filled`);
+    const parts = [r.opts.teamMode ? 'Teams' : 'Free-for-all', r.opts.timer ? `${r.opts.timer}s turns` : 'No timer'];
+    if (r.opts.quickMode) parts.push(`Quick · ${r.opts.quickMode} home`);
     if (r.opts.blockades) parts.push('Blockades');
     if (r.opts.captureToEnterHome) parts.push('Capture to enter home');
     if (r.opts.teamMode) parts.push(r.opts.assist ? 'Assist on' : 'Assist off');
     if (r.spectators) parts.push(`${r.spectators} watching`);
-    $('#lobby-rules').textContent = parts.join(' · ');
+    $('#lobby-rules').replaceChildren(...parts.map((p) => h('li', {}, p)));
 
-    const b = rotateBoard(buildBoard(r.opts.n), povSteps(r.opts.n, you.seat));
-    const R = Math.max(...b.yards.map((y) => Math.hypot(y.center.x, y.center.y)));
-    const ring = $('#lobby-seats');
-    const teams = r.teams || r.seats.map((_, i) => i % 2);
-    const me = account.user?.id;
-    if (moving >= r.seats.length) moving = -1;
-    ring.replaceChildren(...r.seats.map((s, i) => {
-      const y = b.yards[i].center;
-      const c = s.kind !== 'empty' ? COLORS[s.color] : null;
-      const role = s.kind === 'empty' ? 'Empty' : s.kind === 'bot' ? 'Bot' : s.host ? 'Host' : !s.connected ? 'Offline' : '';
-      const tag = [role, r.opts.teamMode ? `Team ${'AB'[teams[i]]}` : ''].filter(Boolean).join(' · ');
-      const tools = [];
-      const tool = (label, fn, aria) => tools.push(h('button', { type: 'button', 'aria-label': aria || null, onclick: () => { audio.play('tap'); fn(); } }, label));
-      const name = s.name || `seat ${i + 1}`;
-      if (you.host && r.phase === 'lobby') {
-        if (moving >= 0 && moving !== i) {
-          tool('Here', () => { net.send('moveSeat', { from: moving, to: i }); moving = -1; }, `Swap ${r.seats[moving].name || 'seat'} with ${name}`);
-        } else if (moving === i) {
-          tool('Cancel', () => { moving = -1; renderLobby(); });
-        } else {
-          if (s.kind !== 'empty') tool('Move', () => { moving = i; renderLobby(); }, `Move ${name}`);
-          if (s.kind === 'human' && i !== you.seat) {
-            tool('Kick', () => net.send('kick', { seat: i }), `Kick ${s.name}`);
-            if (s.connected) tool('Host', () => net.send('makeHost', { seat: i }), `Make ${s.name} the host`);
-          }
-          if (s.kind === 'empty') tool('+ Bot', () => net.send('setBot', { seat: i, on: true }));
-          if (s.kind === 'bot') tool('Remove', () => net.send('setBot', { seat: i, on: false }), `Remove ${s.name}`);
-          if (r.opts.teamMode) tool(`→ ${'AB'[1 - teams[i]]}`, () => net.send('setTeam', { seat: i, team: 1 - teams[i] }), `Put ${name} on team ${'AB'[1 - teams[i]]}`);
-        }
-      }
-      if (me && s.uid && s.uid !== me && moving < 0) {
-        const rel = social.relation(s.uid);
-        if (!rel) tool('+ Friend', () => net.send('friendAdd', { id: s.uid }), `Add ${s.name} as a friend`);
-        else if (rel === 'received') tool('Accept', () => net.send('friendRespond', { id: s.uid, accept: true }), `Accept ${s.name}'s friend request`);
-      }
-      const el = h('div', {
-        class: `seat${s.kind === 'empty' ? ' empty' : ''}${i === you.seat ? ' me' : ''}${moving === i ? ' moving' : ''}${r.opts.teamMode ? ` team-${'ab'[teams[i]]}` : ''}`,
-        role: 'group',
-        'aria-label': s.kind === 'empty' ? `Seat ${i + 1}, empty` : `Seat ${i + 1}, ${s.name}${tag ? ', ' + tag : ''}${s.ready ? ', ready' : ''}`,
-        style: {
-          left: `${50 + (y.x / R) * 37}%`, top: `${50 + (y.y / R) * 37}%`,
-          '--seat-c': c ? c.hex : '#ddd', '--seat-d': c ? c.dark : '#ccc',
-        },
-      },
-      s.kind === 'empty' ? h('span', { class: 'avatar' }, '＋') : avatarEl(s, 'avatar', c ? { background: c.light } : null),
-      h('span', { class: 'nm' }, s.kind === 'empty' ? 'Open' : s.name + (i === you.seat ? ' (you)' : '')),
-      tag ? h('span', { class: 'tag' }, tag) : null,
-      s.ready && s.kind === 'human' ? h('span', { class: 'ready' }, '✓') : null,
-      tools.length ? h('div', { class: 'seat-tools' }, tools) : null);
-      return el;
-    }));
+    const hold = coarse.matches ? 'Hold and drag' : 'Drag';
+    $('#lobby-tip').textContent = !inLobby() ? (you.spectator ? "You're watching this room." : '')
+      : you.host ? `${hold} players to swap seats${r.opts.teamMode ? ' or teams' : ''} · tap for options`
+        : r.seats.some((s) => s.kind === 'empty') ? `${hold} yourself to an open seat, or tap one to sit there.` : '';
+    renderSeats();
 
     const taken = new Set(r.seats.filter((s, i) => s.kind !== 'empty' && i !== you.seat).map((s) => s.color));
     const mine = r.seats[you.seat];
@@ -286,10 +555,12 @@ export function initOnline({ go, goHome, startGame, screens }) {
     $('#lobby-start').hidden = !you.host;
     const canStart = humans.length >= 2 && notReady.length === 0;
     $('#lobby-start').disabled = !canStart;
+    const bots = r.fillBots && r.seats.some((s) => s.kind === 'empty') ? ' Open seats get bots.' : '';
     $('#lobby-hint').textContent = humans.length < 2
       ? 'Waiting for at least one more player. Share the code!'
       : notReady.length ? `Waiting for ${notReady.map((s) => s.name).join(', ')} to be ready`
-        : you.host ? 'Everyone is ready!' : 'Waiting for the host to start';
+        : you.host ? `Everyone is ready!${bots}` : 'Waiting for the host to start';
+    $('#lobby-hint').classList.toggle('good', canStart);
   }
 
   // ---------- server messages ----------

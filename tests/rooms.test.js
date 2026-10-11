@@ -158,6 +158,26 @@ test('host can kick, move seats, toggle bots; colors are unique', () => {
   assert.equal(b.last('error').code, 'kicked');
 });
 
+test('players can move themselves to an open seat, but not swap with others', () => {
+  const mgr = setup();
+  const a = fakeConn(mgr, 'A');
+  a.msg({ t: 'create', opts: { n: 4 } });
+  const code = a.last('room').room.code;
+  const b = fakeConn(mgr, 'B');
+  b.msg({ t: 'join', code });
+  const aSeat = a.last('room').room.you.seat;
+  const bSeat = b.last('room').room.you.seat;
+  const open = [0, 1, 2, 3].find((i) => i !== aSeat && i !== bSeat);
+  b.msg({ t: 'moveSeat', from: bSeat, to: aSeat });
+  assert.equal(b.last('error').code, 'notHost');
+  b.msg({ t: 'moveSeat', from: aSeat, to: open });
+  assert.equal(b.last('error').code, 'notHost');
+  b.msg({ t: 'moveSeat', from: bSeat, to: open });
+  assert.equal(b.last('room').room.you.seat, open);
+  assert.equal(a.last('room').room.seats[open].name, 'B');
+  assert.equal(a.last('room').room.seats[bSeat].kind, 'empty');
+});
+
 test('server validates turns and moves; events replay to the same state', async () => {
   const mgr = setup({ autoMoveDelay: 0 });
   const a = fakeConn(mgr, 'A');

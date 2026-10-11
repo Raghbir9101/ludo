@@ -124,26 +124,31 @@
   </section>
 
   <section class="screen" id="scr-lobby" aria-labelledby="lobby-title">
-    <header class="bar"><button class="icon-btn back" id="lobby-leave" aria-label="Leave room">‹</button><h2 id="lobby-title">Lobby</h2><span></span></header>
-    <div class="panel scroll">
-      <div class="room-code-box">
-        <div><small>ROOM CODE</small><div class="room-code" id="lobby-code">------</div></div>
+    <header class="bar"><button class="icon-btn back" id="lobby-leave" aria-label="Leave room">‹</button><h2 id="lobby-title">Lobby</h2><span class="lobby-count" id="lobby-count"></span></header>
+    <div class="panel scroll lobby" id="lobby-panel">
+      <div class="lobby-head">
+        <button type="button" class="code-chip" id="lobby-copy" aria-label="Copy room code">
+          <small>ROOM CODE</small><span class="room-code" id="lobby-code">------</span><span class="copy-ic" aria-hidden="true">COPY</span>
+        </button>
         <button class="btn c-blue small" id="lobby-share">SHARE</button>
       </div>
-      <p class="lobby-rules" id="lobby-rules"></p>
-      <div class="seat-ring" id="lobby-seats"></div>
-      <fieldset class="field"><legend>Your color</legend><div class="swatches" id="lobby-colors"></div></fieldset>
-      <div class="host-tools" id="lobby-host" hidden>
-        <p class="hint left">Tap <b>Move</b> on a seat, then <b>Here</b> on another to swap them.</p>
+      <ul class="rule-chips" id="lobby-rules" aria-label="Room rules"></ul>
+      <p class="lobby-tip" id="lobby-tip"></p>
+      <div class="seat-board" id="lobby-seats"></div>
+      <fieldset class="field compact"><legend>Your color</legend><div class="swatches lobby-swatches" id="lobby-colors"></div></fieldset>
+      <details class="host-tools" id="lobby-host" hidden>
+        <summary>Room settings</summary>
         <label class="toggle"><input type="checkbox" id="lobby-fillbots" checked><span>Fill empty seats with bots</span></label>
         <div class="seg small" id="lobby-diff"></div>
         <button class="btn small c-blue" id="lobby-shuffle">SHUFFLE SEATS</button>
-      </div>
-      <p class="hint" id="lobby-hint"></p>
-      <div class="actions">
-        <button class="btn btn-big c-green" id="lobby-ready">READY</button>
-        <button class="btn btn-big c-red" id="lobby-start" hidden>START GAME</button>
-        <button class="btn c-purple" id="lobby-invite" hidden>INVITE FRIENDS</button>
+      </details>
+      <div class="actions lobby-actions">
+        <p class="lobby-hint" id="lobby-hint" role="status"></p>
+        <div class="lobby-btns">
+          <button class="btn c-purple" id="lobby-invite" hidden>INVITE</button>
+          <button class="btn btn-big c-green" id="lobby-ready">READY</button>
+          <button class="btn btn-big c-green" id="lobby-start" hidden>START GAME</button>
+        </div>
       </div>
     </div>
   </section>

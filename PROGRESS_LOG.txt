@@ -474,6 +474,29 @@ LUDO PARTY - PROGRESS LOG
   HTTPS (through Cloudflare), it serves the latest client code (reconnection banner, new
   net.js), and the secure WebSocket (wss://.../ws) connects and receives "welcome".
 
+[UI] Lobby redesigned with drag and drop
+- New layout: the seat ring around a board picture (cards overlapped the board, tiny
+  "Move / Here / -> A" buttons) is replaced by a clean seat grid. Each card shows the player's
+  color strip, avatar, name and a clear status pill (You, Host, Ready, Not ready, Bot,
+  Offline). Team rooms show two labelled columns, Team A and Team B, with filled counts.
+- Drag and drop: the host drags any player onto another seat to swap them, or onto the other
+  team's column to switch teams. Other players can drag themselves to an open seat. Works
+  with mouse (drag straight away) and touch (press and hold, or use the grip), with a floating
+  card, highlighted drop targets, auto-scroll, a short vibration, and cards sliding into
+  their new places.
+- Tap menu (also keyboard accessible): tap a seat for Move / swap, Switch team, Make host,
+  Remove (with confirmation), Remove bot, Add friend. Open seats have a one-tap "+ BOT" for
+  the host; other players tap an open seat to sit there.
+- Header: tap-to-copy room code, Share button, rule chips, and a seats-filled counter
+  (for example 3/4). Room settings fold away; the color picker is one compact row.
+- Bottom bar stays at the bottom with the status line and the Ready / Start button.
+  Disabled buttons are no longer see-through (text was showing through START GAME).
+- Server: players can move themselves into an open seat (swapping with others stays
+  host-only). New test; 82 passing.
+- Verified in headless Chrome on a phone screen (4-player teams, 6- and 8-player
+  free-for-all) and on desktop: mouse drag, touch hold-and-drag, a quick swipe still scrolls,
+  the menu, no page errors.
+
 OPEN DECISIONS
 - The VPS root password was shared in chat; change it (passwd) and put the new one in the
   SSH_PASSWORD secret. Deploys depend on SSH password login staying enabled.
