@@ -209,7 +209,14 @@ async function boot() {
   window.addEventListener('keydown', unlock, { once: true, capture: true });
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const hadWorker = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' }).catch(() => {});
+    // A new worker after a deploy: reload once so the page isn't a mix of old and new files,
+    // but never in the middle of a room or game.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      const scr = document.querySelector('.screen.active')?.id;
+      if (hadWorker && (!scr || scr === 'scr-splash' || scr === 'scr-home')) location.reload();
+    });
   }
 
   const wait = Math.max(0, 450 - (performance.now() - t0));

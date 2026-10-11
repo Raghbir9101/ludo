@@ -497,6 +497,16 @@ LUDO PARTY - PROGRESS LOG
   free-for-all) and on desktop: mouse drag, touch hold-and-drag, a quick swipe still scrolls,
   the menu, no page errors.
 
+[Fix] Stale scripts after a deploy (mixed old/new lobby)
+- Cause: Cloudflare replaces the app's "no-cache" header on JS/CSS with a 4-hour browser
+  max-age, so after a deploy browsers loaded the new page with old scripts and styles
+  (the lobby showed the old seat ring on top of the new layout).
+- Fix: the service worker now always revalidates app code with the server (cache v3), the
+  worker script itself is never served from the HTTP cache, and when a new worker takes over
+  the page reloads once if the player is on Home (never mid-room or mid-game).
+- Recommended Cloudflare setting: Caching > Configuration > Browser Cache TTL =
+  "Respect Existing Headers", so first-time visitors without the worker also get fresh files.
+
 OPEN DECISIONS
 - The VPS root password was shared in chat; change it (passwd) and put the new one in the
   SSH_PASSWORD secret. Deploys depend on SSH password login staying enabled.

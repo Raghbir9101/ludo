@@ -1,6 +1,6 @@
 // Service worker: precaches the app shell so solo mode works offline.
 // App code is network-first (always fresh when online); fonts and icons are cache-first.
-const CACHE = 'ludo-shell-v2';
+const CACHE = 'ludo-shell-v3';
 const STATIC = /\.(woff2|png)$/;
 
 self.addEventListener('install', (e) => {
@@ -23,7 +23,9 @@ self.addEventListener('activate', (e) => {
 async function networkFirst(req, fallbackUrl) {
   const cache = await caches.open(CACHE);
   try {
-    const res = await fetch(req);
+    // The CDN in front of the app hands JS/CSS a long browser max-age, so always revalidate
+    // or a deploy shows new HTML running old scripts. (Navigations can't take a RequestInit.)
+    const res = await (req.mode === 'navigate' ? fetch(req) : fetch(req, { cache: 'no-cache' }));
     if (res.ok && res.type === 'basic') cache.put(fallbackUrl || req, res.clone());
     return res;
   } catch {
