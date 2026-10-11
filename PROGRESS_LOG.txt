@@ -456,7 +456,18 @@ LUDO PARTY - PROGRESS LOG
 - npm test now uses plain "node --test", which also works on Node 18/20 (the old glob form
   only worked on Node 21+). 81 tests pass on Node 18.20.8 and 22.
 
+[DevOps] Deploy key installed and first automated-style deploy
+- Created a dedicated SSH key for GitHub Actions (github-actions-ludo) and authorised it on
+  the VPS. Key login, git remote, Node 18.20.8/npm/pm2 (through nvm) and curl all checked.
+- Ran scripts/deploy.sh against production the same way the workflow does: the server moved
+  from 9d39ad2 to d7aafaf (no third six, reconnection, CI/CD), pm2 restarted "ludo" only,
+  and /healthz passed. Other apps on the server were not touched.
+- Remaining: add SSH_HOST, SSH_USER, SSH_KEY (and optionally SSH_KNOWN_HOSTS) to the
+  GitHub "production" environment so pushes to main deploy automatically.
+
 OPEN DECISIONS
+- The VPS root password was shared in chat; change it (passwd) and consider turning off
+  SSH password login once key login is confirmed.
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
 - Google and Facebook app credentials (client IDs/secrets) still need to be registered;
