@@ -3,7 +3,7 @@
 import { randomBytes, randomInt } from 'node:crypto';
 import { createGame, roll, move, distinctMoves, rollDie } from './game.js';
 import { chooseMove, botThinkMs, animMs } from './bot.js';
-import { COLORS, DEFAULT_SEAT_COLORS, QUICK_CHAT, EMOJIS, teamOf, seatColors } from '../shared/rules.js';
+import { COLORS, DEFAULT_SEAT_COLORS, QUICK_CHAT, EMOJIS, teamOf, teamCountFor, seatColors } from '../shared/rules.js';
 
 export const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const BOT_NAMES = ['Pip', 'Dot', 'Bix', 'Zuzu', 'Momo', 'Kiki', 'Taro', 'Nova'];
@@ -255,6 +255,7 @@ export class RoomManager {
     const opts = {
       n,
       teamMode: !!o.teamMode,
+      teamCount: o.teamMode ? teamCountFor(n, o.teamCount) : 2,
       timer: [0, 15, 30].includes(o.timer) ? o.timer : 30,
       quickMode: [0, 1, 2].includes(o.quickMode) ? o.quickMode : 0,
       blockades: !!o.blockades,
@@ -265,7 +266,7 @@ export class RoomManager {
     const room = {
       code: this.newCode(), opts, phase: 'lobby', host: conn.pid, seq: 0,
       seats: Array.from({ length: n }, () => emptySeat()),
-      teams: Array.from({ length: n }, (_, i) => teamOf(i)),
+      teams: Array.from({ length: n }, (_, i) => teamOf(i, opts.teamCount)),
       spectators: new Set(), conns: new Set(), game: null, fillBots: true, difficulty: 'medium',
       banned: new Set(), timers: {}, autoPlaySeat: -1, createdAt: Date.now(),
     };
@@ -548,7 +549,7 @@ export class RoomManager {
 
   setTeam(room, conn, si, team) {
     if (room.host !== conn.pid || room.phase !== 'lobby') return conn.send({ t: 'error', code: 'notHost' });
-    if (!room.opts.teamMode || !room.seats[si] || (team !== 0 && team !== 1)) return;
+    if (!room.opts.teamMode || !room.seats[si] || !Number.isInteger(team) || team < 0 || team >= room.opts.teamCount) return;
     room.teams[si] = team;
     this.broadcastRoomOrMeta(room);
   }
@@ -598,8 +599,8 @@ export class RoomManager {
     if (room.fillBots) room.seats.forEach((s, i) => { if (s.kind === 'empty') room.seats[i] = this.botSeat(room, i, true); });
     const active = room.seats.map((s) => s.kind !== 'empty');
     if (active.filter(Boolean).length < 2) return conn.send({ t: 'error', code: 'needPlayers', msg: 'Need at least 2 seats filled' });
-    if (room.opts.teamMode && [0, 1].some((t) => !room.seats.some((s, i) => active[i] && room.teams[i] === t))) {
-      return conn.send({ t: 'error', code: 'teams', msg: 'Both teams need at least one player' });
+    if (room.opts.teamMode && new Set(room.teams.filter((_, i) => active[i])).size < 2) {
+      return conn.send({ t: 'error', code: 'teams', msg: room.opts.teamCount === 2 ? 'Both teams need at least one player' : 'At least two teams need players' });
     }
     const firstActive = active.map((a, i) => (a ? i : -1)).filter((i) => i >= 0);
     const colors = seatColors(room.opts.n, room.seats.map((s, i) => (active[i] ? s.color : -1)));
@@ -607,7 +608,7 @@ export class RoomManager {
       n: room.opts.n,
       seats: room.seats.map((s, i) => ({ active: active[i], color: colors[i], team: room.teams[i] })),
       opts: {
-        teamMode: room.opts.teamMode, assist: room.opts.assist, quickMode: room.opts.quickMode,
+        teamMode: room.opts.teamMode, teamCount: room.opts.teamCount, assist: room.opts.assist, quickMode: room.opts.quickMode,
         blockades: room.opts.blockades, captureToEnterHome: room.opts.captureToEnterHome,
       },
       firstTurn: firstActive[randomInt(firstActive.length)],

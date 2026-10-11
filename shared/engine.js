@@ -2,7 +2,7 @@
 // without mutating the input. Dice values are injected by the caller.
 import {
   TOKENS, DEFAULT_OPTS, lastTrack, colStart, homeProgress, cellOf, nextProgress,
-  isSafe, teamOf, stepsToHome,
+  isSafe, teamOf, teamCountFor, stepsToHome,
 } from './rules.js';
 
 const clone = (s) => (typeof structuredClone === 'function' ? structuredClone(s) : JSON.parse(JSON.stringify(s)));
@@ -10,6 +10,8 @@ const clone = (s) => (typeof structuredClone === 'function' ? structuredClone(s)
 export function createGame({ n, seats = [], opts = {}, firstTurn = 0 }) {
   if (![4, 6, 8].includes(n)) throw new Error('n must be 4, 6 or 8');
   const o = { ...DEFAULT_OPTS, ...opts };
+  o.teamCount = teamCountFor(n, o.teamCount);
+  const validTeam = (t) => Number.isInteger(t) && t >= 0 && t < o.teamCount;
   const players = [];
   for (let s = 0; s < n; s++) {
     const seat = seats[s] || {};
@@ -17,7 +19,7 @@ export function createGame({ n, seats = [], opts = {}, firstTurn = 0 }) {
       seat: s,
       active: seat.active !== false,
       color: seat.color ?? s,
-      team: o.teamMode ? (seat.team === 0 || seat.team === 1 ? seat.team : teamOf(s)) : s,
+      team: o.teamMode ? (validTeam(seat.team) ? seat.team : teamOf(s, o.teamCount)) : s,
       tokens: Array(TOKENS).fill(o.quickMode ? 0 : -1),
       done: false,
       captured: false,
