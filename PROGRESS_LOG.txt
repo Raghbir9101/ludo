@@ -507,6 +507,17 @@ LUDO PARTY - PROGRESS LOG
 - Recommended Cloudflare setting: Caching > Configuration > Browser Cache TTL =
   "Respect Existing Headers", so first-time visitors without the worker also get fresh files.
 
+[Fix] Versioned app files (permanent fix for stale code after deploys)
+- Browsers that had cached the old lobby script before the fix above kept running it. Now
+  the server computes a build id from the app files and serves all JS, CSS and shared code
+  under /v/<build>/... (an import map covers the shared modules). Every deploy changes the
+  URLs, so no browser or Cloudflare cache can serve an old copy; versioned files are cached
+  for a year, which also makes repeat loads faster.
+- The service worker gets the build id as its cache name, so each deploy installs a fresh
+  offline copy and removes the old one.
+- Verified locally: all 30 app files load from versioned URLs, none from old paths, and the
+  lobby (drag and drop, menu) works with no page errors.
+
 OPEN DECISIONS
 - The VPS root password was shared in chat; change it (passwd) and put the new one in the
   SSH_PASSWORD secret. Deploys depend on SSH password login staying enabled.

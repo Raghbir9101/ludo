@@ -1,6 +1,8 @@
 // Service worker: precaches the app shell so solo mode works offline.
-// App code is network-first (always fresh when online); fonts and icons are cache-first.
-const CACHE = 'ludo-shell-v3';
+// The page is network-first (always fresh when online). App code lives under /v/<build>/ and
+// never changes at a given URL, so it is cache-first like fonts and icons. The server stamps
+// the build into CACHE, so each deploy installs a fresh copy and drops the old one.
+const CACHE = 'ludo-shell-dev';
 const STATIC = /\.(woff2|png)$/;
 
 self.addEventListener('install', (e) => {
@@ -53,7 +55,7 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/auth/') || url.pathname.startsWith('/api/')) return;
   if (req.mode === 'navigate') {
     e.respondWith(networkFirst(req, '/'));
-  } else if (STATIC.test(url.pathname)) {
+  } else if (STATIC.test(url.pathname) || url.pathname.startsWith('/v/')) {
     e.respondWith(cacheFirst(req));
   } else {
     e.respondWith(networkFirst(req));
