@@ -470,6 +470,9 @@ LUDO PARTY - PROGRESS LOG
 - The GitHub deploy key was removed from the server's authorized_keys and from this PC.
 - Deploy secrets added to the GitHub "production" environment; pushes to main that pass
   the tests now deploy to the VPS automatically.
+- Verified on the live domain https://ludo.playunofree.com: the site and /healthz answer over
+  HTTPS (through Cloudflare), it serves the latest client code (reconnection banner, new
+  net.js), and the secure WebSocket (wss://.../ws) connects and receives "welcome".
 
 OPEN DECISIONS
 - The VPS root password was shared in chat; change it (passwd) and put the new one in the
