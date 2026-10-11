@@ -442,6 +442,20 @@ LUDO PARTY - PROGRESS LOG
   about 60 seconds mid-game; the banner showed, then the game reconnected and caught up
   on the moves made in the meantime.
 
+[DevOps] CI/CD with GitHub Actions
+- CI: every push and pull request runs the full test suite on Node 18, 20 and 22
+  (.github/workflows/ci-cd.yml). No secrets needed; the MongoDB test skips itself in CI.
+- CD: when tests pass on main, the "Deploy to VPS" job connects to the server over SSH and runs
+  scripts/deploy.sh: fast-forward to the tested commit, npm ci --omit=dev, pm2 restart,
+  then a /healthz check. If the new version is not healthy within 20 seconds, it rolls back
+  to the previous commit automatically. Deploys never overlap; a manual "Run workflow"
+  button is also available.
+- Safe by default: the deploy is skipped with a warning until the SSH secrets are added to
+  the GitHub "production" environment. The server's .env is never touched.
+- No new dependencies or third-party actions (only GitHub's checkout and setup-node).
+- npm test now uses plain "node --test", which also works on Node 18/20 (the old glob form
+  only worked on Node 21+). 81 tests pass on Node 18.20.8 and 22.
+
 OPEN DECISIONS
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
