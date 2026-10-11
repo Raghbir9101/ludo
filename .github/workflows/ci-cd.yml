@@ -39,7 +39,7 @@ jobs:
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: ${{ secrets.SSH_USER }}
       SSH_PORT: ${{ secrets.SSH_PORT }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
+      SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
       SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
       APP_DIR: ${{ vars.APP_DIR }}
     steps:
@@ -48,8 +48,8 @@ jobs:
       - name: Check deploy secrets
         id: cfg
         run: |
-          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_KEY" ]; then
-            echo "::warning::Deploy skipped: set SSH_HOST, SSH_USER and SSH_KEY in the 'production' environment secrets."
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_PASSWORD" ]; then
+            echo "::warning::Deploy skipped: set SSH_HOST, SSH_USER and SSH_PASSWORD in the 'production' environment secrets."
             echo "ready=false" >> "$GITHUB_OUTPUT"
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -59,21 +59,30 @@ jobs:
         if: steps.cfg.outputs.ready == 'true'
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
           if [ -n "$SSH_KNOWN_HOSTS" ]; then
             printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           else
             ssh-keyscan -p "${SSH_PORT:-22}" -H "$SSH_HOST" > ~/.ssh/known_hosts 2>/dev/null
           fi
+          # ssh asks this helper for the password; it reads the secret from the environment,
+          # so the password itself is never written to disk.
+          cat > "$RUNNER_TEMP/askpass" <<'EOF'
+          #!/bin/sh
+          printf '%s\n' "$SSH_PASSWORD"
+          EOF
+          chmod 700 "$RUNNER_TEMP/askpass"
 
       - name: Deploy
         if: steps.cfg.outputs.ready == 'true'
+        env:
+          SSH_ASKPASS: ${{ runner.temp }}/askpass
+          SSH_ASKPASS_REQUIRE: force
         run: |
-          ssh -i ~/.ssh/deploy_key -p "${SSH_PORT:-22}" -o BatchMode=yes -o ConnectTimeout=20 \
+          ssh -p "${SSH_PORT:-22}" -o ConnectTimeout=20 -o PubkeyAuthentication=no \
+            -o PreferredAuthentications=password,keyboard-interactive -o NumberOfPasswordPrompts=1 \
             "$SSH_USER@$SSH_HOST" \
             "SHA='$GITHUB_SHA' APP_DIR='${APP_DIR:-/var/www/ludo}' bash -s" < scripts/deploy.sh
 
-      - name: Clean up key
+      - name: Clean up
         if: always()
-        run: rm -f ~/.ssh/deploy_key
+        run: rm -f "$RUNNER_TEMP/askpass"

@@ -462,12 +462,18 @@ LUDO PARTY - PROGRESS LOG
 - Ran scripts/deploy.sh against production the same way the workflow does: the server moved
   from 9d39ad2 to d7aafaf (no third six, reconnection, CI/CD), pm2 restarted "ludo" only,
   and /healthz passed. Other apps on the server were not touched.
-- Remaining: add SSH_HOST, SSH_USER, SSH_KEY (and optionally SSH_KNOWN_HOSTS) to the
+
+[DevOps] Deploy switched to password login (requested)
+- The deploy job now signs in to the VPS with the SSH_PASSWORD secret instead of an SSH key,
+  using OpenSSH's built-in password helper (no extra tools such as sshpass). The password
+  is read from the secret at run time and never written to disk or committed.
+- The GitHub deploy key was removed from the server's authorized_keys and from this PC.
+- Remaining: add SSH_HOST, SSH_USER, SSH_PASSWORD (and optionally SSH_KNOWN_HOSTS) to the
   GitHub "production" environment so pushes to main deploy automatically.
 
 OPEN DECISIONS
-- The VPS root password was shared in chat; change it (passwd) and consider turning off
-  SSH password login once key login is confirmed.
+- The VPS root password was shared in chat; change it (passwd) and put the new one in the
+  SSH_PASSWORD secret. Deploys depend on SSH password login staying enabled.
 - The Atlas database user and password were shared in chat; rotate the password and
   consider a dedicated user limited to the `ludo` database.
 - Google and Facebook app credentials (client IDs/secrets) still need to be registered;
