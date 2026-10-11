@@ -518,6 +518,15 @@ LUDO PARTY - PROGRESS LOG
 - Verified locally: all 30 app files load from versioned URLs, none from old paths, and the
   lobby (drag and drop, menu) works with no page errors.
 
+[Rules] 2-player teams for 6 and 8 players
+- Team rooms with 6 seats can now be 3 v 3 or three pairs (2 v 2 v 2). With 8 seats they
+  can be 4 v 4 or four pairs (2 v 2 v 2 v 2). Partners sit opposite. The choice is on
+  Create Room and on Team Up (solo vs bots). 4-player rooms stay 2 v 2.
+- Lobby: a column per team (A–D), drag onto another column to switch, tap a seat to pick
+  any other team. Game panels, win callouts and results use Team A–D.
+- Tests: engine assignment, a 6-player 3-team room start, and random games for 3- and
+  4-team counts. 84 passing.
+
 OPEN DECISIONS
 - The VPS root password was shared in chat; change it (passwd) and put the new one in the
   SSH_PASSWORD secret. Deploys depend on SSH password login staying enabled.

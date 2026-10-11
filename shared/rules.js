@@ -75,8 +75,16 @@ export function isSafe(n, abs) {
   return set.has(abs);
 }
 
-// Teams: even seats vs odd seats. For 4 players this puts partners opposite each other.
-export const teamOf = (seat) => seat % 2;
+// Teams: seat % count. Two teams alternate around the board (4 players: partners opposite);
+// 2-player teams at 6 or 8 seats also put partners directly opposite each other.
+export const teamOf = (seat, count = 2) => seat % count;
+// How many teams each player count can be split into.
+export const TEAM_COUNTS = { 4: [2], 6: [2, 3], 8: [2, 4] };
+export const teamCountFor = (n, count) => (TEAM_COUNTS[n]?.includes(count) ? count : 2);
+export const TEAM_NAMES = 'ABCD';
+export const teamName = (t) => `Team ${TEAM_NAMES[t] || '?'}`;
+// Short picker label: 2 teams of 3 → "3 v 3"; 3 teams of 2 → "2 v 2 v 2".
+export const teamSplitLabel = (n, count) => Array(count).fill(n / count).join(' v ');
 
 // Where a token is, as a board cell: yard, main track (absolute index), home column, or home.
 export function cellOf(n, seat, p) {
@@ -113,6 +121,7 @@ export const EMOJIS = ['😀', '😂', '😮', '😢', '😡', '👍', '🎉', '
 
 export const DEFAULT_OPTS = {
   teamMode: false,
+  teamCount: 2,
   assist: true,
   quickMode: 0,
   blockades: false,

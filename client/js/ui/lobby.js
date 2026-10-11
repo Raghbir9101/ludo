@@ -1,5 +1,5 @@
 // Online screens: create room, join room, lobby. Hands off to the game screen on start.
-import { COLORS } from '/shared/rules.js';
+import { COLORS, TEAM_COUNTS, TEAM_NAMES, teamCountFor, teamName, teamSplitLabel } from '/shared/rules.js';
 import { net } from '../net.js';
 import { motion } from '../anim.js';
 import { OnlineGame } from '../state.js';
@@ -22,9 +22,17 @@ export function initOnline({ go, goHome, startGame, screens }) {
   const current = () => document.querySelector('.screen.active')?.id?.replace('scr-', '');
 
   // ---------- create ----------
-  const cfg = { n: 4, teamMode: false, timer: 30, quickMode: 0 };
-  const countSeg = segmented($('#create-count'), [4, 6, 8].map((v) => ({ value: v, label: String(v) })), cfg.n, (v) => { cfg.n = v; });
-  const modeSeg = segmented($('#create-mode'), [{ value: false, label: 'Free-for-all' }, { value: true, label: 'Team' }], false, (v) => { cfg.teamMode = v; });
+  const cfg = { n: 4, teamMode: false, teamCount: 2, timer: 30, quickMode: 0 };
+  const refreshTeamSplit = () => {
+    const wrap = $('#create-teams');
+    const options = TEAM_COUNTS[cfg.n] || [2];
+    wrap.hidden = !cfg.teamMode || options.length < 2;
+    cfg.teamCount = teamCountFor(cfg.n, cfg.teamCount);
+    if (wrap.hidden) return;
+    segmented(wrap, options.map((c) => ({ value: c, label: teamSplitLabel(cfg.n, c) })), cfg.teamCount, (v) => { cfg.teamCount = v; });
+  };
+  const countSeg = segmented($('#create-count'), [4, 6, 8].map((v) => ({ value: v, label: String(v) })), cfg.n, (v) => { cfg.n = v; refreshTeamSplit(); });
+  const modeSeg = segmented($('#create-mode'), [{ value: false, label: 'Free-for-all' }, { value: true, label: 'Team' }], false, (v) => { cfg.teamMode = v; refreshTeamSplit(); });
   segmented($('#create-timer'), [{ value: 15, label: '15s' }, { value: 30, label: '30s' }, { value: 0, label: 'Off' }], 30, (v) => { cfg.timer = v; });
   segmented($('#create-quick'), [{ value: 0, label: 'Classic' }, { value: 1, label: 'Quick: 1 home' }, { value: 2, label: 'Quick: 2 home' }], 0, (v) => { cfg.quickMode = v; });
   let connWarn = 0;
@@ -204,7 +212,6 @@ export function initOnline({ go, goHome, startGame, screens }) {
   ], 'medium', (v) => net.send('setDifficulty', { d: v }));
 
   // ---------- seats: cards, tap menu, drag and drop ----------
-  const TEAM = ['A', 'B'];
   const board = $('#lobby-seats');
   const scroller = $('#lobby-panel');
   const coarse = matchMedia('(pointer: coarse)');
@@ -213,7 +220,8 @@ export function initOnline({ go, goHome, startGame, screens }) {
   let suppressClickUntil = 0;
   let landing = null;
 
-  const teamOf = (i) => (room.teams ? room.teams[i] : i % 2);
+  const teamCount = () => room.opts.teamCount || 2;
+  const teamOf = (i) => (room.teams ? room.teams[i] : i % teamCount());
   const inLobby = () => room?.phase === 'lobby' && !room.you.spectator && room.you.seat >= 0;
   const canDrag = (i) => inLobby() && (room.you.host ? room.seats[i].kind !== 'empty' : i === room.you.seat);
   const canDrop = (from, to) => from !== to && (room.you.host || room.seats[to].kind === 'empty');
@@ -241,7 +249,11 @@ export function initOnline({ go, goHome, startGame, screens }) {
         add('SIT HERE', 'c-blue', () => net.send('moveSeat', { from: you.seat, to: i }));
       } else {
         add(i === you.seat ? 'MOVE TO ANOTHER SEAT' : 'MOVE / SWAP SEAT', 'c-blue', () => pickSeat(i));
-        if (r.opts.teamMode) add(`SWITCH TO TEAM ${TEAM[1 - teamOf(i)]}`, 'c-blue', () => net.send('setTeam', { seat: i, team: 1 - teamOf(i) }));
+        if (r.opts.teamMode) {
+          for (let t = 0; t < teamCount(); t++) {
+            if (t !== teamOf(i)) add(`SWITCH TO ${teamName(t).toUpperCase()}`, 'c-blue', () => net.send('setTeam', { seat: i, team: t }));
+          }
+        }
         if (s.kind === 'human' && i !== you.seat && s.connected) add('MAKE HOST', 'c-yellow', () => net.send('makeHost', { seat: i }));
         if (s.kind === 'bot') add('REMOVE BOT', 'c-red', () => net.send('setBot', { seat: i, on: false }));
         if (s.kind === 'human' && i !== you.seat) add('REMOVE FROM ROOM', 'c-red', () => confirmKick(i));
@@ -268,7 +280,7 @@ export function initOnline({ go, goHome, startGame, screens }) {
     // An open seat for a non-host has just one thing to do: sit there.
     if (s.kind === 'empty' && !room.you.host) return acts[0].onClick();
     const [status] = seatStatus(s, i);
-    const team = room.opts.teamMode ? ` · Team ${TEAM[teamOf(i)]}` : '';
+    const team = room.opts.teamMode ? ` · ${teamName(teamOf(i))}` : '';
     modal({
       title: s.kind === 'empty' ? `Seat ${i + 1}` : s.name,
       body: `${s.kind === 'empty' ? 'Open seat' : status}${team}`,
@@ -287,7 +299,7 @@ export function initOnline({ go, goHome, startGame, screens }) {
       actions: [
         ...targets.map((j) => {
           const t = room.seats[j];
-          const team = room.opts.teamMode ? ` (TEAM ${TEAM[teamOf(j)]})` : '';
+          const team = room.opts.teamMode ? ` (${teamName(teamOf(j)).toUpperCase()})` : '';
           return {
             label: t.kind === 'empty' ? `SEAT ${j + 1}: OPEN${team}` : `SWAP WITH ${t.name.toUpperCase()}${team}`,
             cls: t.kind === 'empty' ? 'c-green' : 'c-blue',
@@ -333,7 +345,7 @@ export function initOnline({ go, goHome, startGame, screens }) {
       'data-drag': draggable ? '' : null,
       role: acts ? 'button' : 'group',
       tabindex: acts ? '0' : null,
-      'aria-label': `${seatLabel(s, i)}${i === r.you.seat ? ' (you)' : ''}: ${s.kind === 'empty' ? 'open seat' : status}${r.opts.teamMode ? `, team ${TEAM[teamOf(i)]}` : ''}`,
+      'aria-label': `${seatLabel(s, i)}${i === r.you.seat ? ' (you)' : ''}: ${s.kind === 'empty' ? 'open seat' : status}${r.opts.teamMode ? `, ${teamName(teamOf(i))}` : ''}`,
       style: c ? { '--seat-c': c.hex, '--seat-d': c.dark } : null,
     },
     s.kind === 'empty' ? h('span', { class: 'avatar sc-av' }, '+') : avatarEl(s, 'avatar sc-av', { background: c.light }),
@@ -350,12 +362,13 @@ export function initOnline({ go, goHome, startGame, screens }) {
     if (landing) before.set(landing.key, landing.rect);
     landing = null;
     if (r.opts.teamMode) {
-      board.className = 'seat-board teams';
-      board.replaceChildren(...[0, 1].map((t) => {
+      const tc = teamCount();
+      board.className = `seat-board teams tc-${tc}`;
+      board.replaceChildren(...Array.from({ length: tc }, (_, t) => {
         const seats = r.seats.map((_, i) => i).filter((i) => teamOf(i) === t);
         const filled = seats.filter((i) => r.seats[i].kind !== 'empty').length;
-        return h('div', { class: `team-col team-${'ab'[t]}`, 'data-team': String(t), role: 'group', 'aria-label': `Team ${TEAM[t]}` },
-          h('div', { class: 'team-head' }, h('span', {}, `TEAM ${TEAM[t]}`), h('small', {}, `${filled}/${seats.length}`)),
+        return h('div', { class: `team-col team-${'abcd'[t]}`, 'data-team': String(t), role: 'group', 'aria-label': teamName(t) },
+          h('div', { class: 'team-head' }, h('span', {}, teamName(t).toUpperCase()), h('small', {}, `${filled}/${seats.length}`)),
           ...seats.map(seatCard));
       }));
     } else {
@@ -515,7 +528,7 @@ export function initOnline({ go, goHome, startGame, screens }) {
     const filled = r.seats.filter((s) => s.kind !== 'empty').length;
     $('#lobby-count').textContent = `${filled}/${r.seats.length}`;
     $('#lobby-count').setAttribute('aria-label', `${filled} of ${r.seats.length} seats filled`);
-    const parts = [r.opts.teamMode ? 'Teams' : 'Free-for-all', r.opts.timer ? `${r.opts.timer}s turns` : 'No timer'];
+    const parts = [r.opts.teamMode ? (teamCount() > 2 ? `${teamCount()} teams · 2 each` : 'Teams') : 'Free-for-all', r.opts.timer ? `${r.opts.timer}s turns` : 'No timer'];
     if (r.opts.quickMode) parts.push(`Quick · ${r.opts.quickMode} home`);
     if (r.opts.blockades) parts.push('Blockades');
     if (r.opts.captureToEnterHome) parts.push('Capture to enter home');
@@ -656,6 +669,7 @@ export function initOnline({ go, goHome, startGame, screens }) {
       net.connect();
       if (n) { cfg.n = n; countSeg.set(n); }
       if (team != null) { cfg.teamMode = team; modeSeg.set(team); }
+      refreshTeamSplit();
       go('create');
     },
     openJoin() {

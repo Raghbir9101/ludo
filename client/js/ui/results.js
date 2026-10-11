@@ -1,5 +1,5 @@
 // Results screen: trophy, podium and full ranking.
-import { COLORS } from '/shared/rules.js';
+import { COLORS, teamName } from '/shared/rules.js';
 import { $, h, announce, avatarEl } from './dom.js';
 import { ordinal } from './game.js';
 
@@ -13,7 +13,7 @@ export function showResults(ctrl, ranks) {
   if (team) {
     entries = ranks.map((t) => {
       const members = st.players.filter((p) => p.active && p.team === t).map((p) => p.seat);
-      return { label: `Team ${'AB'[t]}`, sub: members.map(name).join(', '), color: color(members[0]), seats: members, mine: members.some((s) => ctrl.mySeats.has(s)) };
+      return { label: teamName(t), sub: members.map(name).join(', '), color: color(members[0]), seats: members, mine: members.some((s) => ctrl.mySeats.has(s)) };
     });
   } else {
     entries = ranks.map((s) => ({ label: name(s), sub: '', color: color(s), seats: [s], mine: ctrl.mySeats.has(s) }));

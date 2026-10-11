@@ -108,6 +108,24 @@ test('team rooms: both teams need players; bots fill partners; teams follow seat
   g.state.players.forEach((p) => assert.equal(p.team, p.seat % 2));
 });
 
+test('6-player rooms can start as three 2-player teams', () => {
+  const mgr = setup();
+  const a = fakeConn(mgr, 'A');
+  a.msg({ t: 'create', opts: { n: 6, teamMode: true, teamCount: 3 } });
+  const room = a.last('room').room;
+  assert.equal(room.opts.teamCount, 3);
+  assert.deepEqual(room.teams, [0, 1, 2, 0, 1, 2]);
+  const code = room.code;
+  const b = fakeConn(mgr, 'B');
+  b.msg({ t: 'join', code });
+  b.msg({ t: 'ready', on: true });
+  a.msg({ t: 'start' });
+  const g = a.last('game');
+  assert.ok(g);
+  assert.equal(g.state.opts.teamCount, 3);
+  assert.deepEqual(g.state.players.map((p) => p.team), [0, 1, 2, 0, 1, 2]);
+});
+
 test('empty seats still get their own distinct colors (2 humans, team mode, no bots)', () => {
   const mgr = setup();
   const a = fakeConn(mgr, 'A');

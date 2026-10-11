@@ -1,5 +1,5 @@
 // Mode / player-count select for offline play (solo and team vs bots).
-import { COLORS, DEFAULT_SEAT_COLORS, teamOf } from '/shared/rules.js';
+import { COLORS, DEFAULT_SEAT_COLORS, TEAM_COUNTS, teamOf, teamCountFor, teamSplitLabel } from '/shared/rules.js';
 import { $, h, segmented } from './dom.js';
 import { prefs, savePrefs, displayName, BOT_AVATAR, AVATARS } from '../prefs.js';
 import { audio } from '../audio.js';
@@ -24,6 +24,7 @@ export function setupScreen({ onStart, onCreateTeamRoom }) {
   let mode = 'solo';
   const cfg = {
     n: prefs.lastCount || 4,
+    teamCount: 2,
     color: prefs.lastColor ?? 0,
     difficulty: prefs.lastDifficulty || 'medium',
     quick: 0,
@@ -60,8 +61,22 @@ export function setupScreen({ onStart, onCreateTeamRoom }) {
 
   function renderTeam() {
     const n = cfg.n;
-    const per = n / 2;
-    $('#setup-team-info').textContent = `You + ${per - 1} bot partner${per > 2 ? 's' : ''} vs ${per} bots. ${n === 4 ? 'Partners sit opposite.' : 'Teammates sit on alternating arms.'}`;
+    const options = TEAM_COUNTS[n] || [2];
+    const wrap = $('#setup-teams');
+    wrap.hidden = options.length < 2;
+    cfg.teamCount = teamCountFor(n, cfg.teamCount);
+    if (!wrap.hidden) {
+      segmented(wrap, options.map((c) => ({ value: c, label: teamSplitLabel(n, c) })), cfg.teamCount, (v) => {
+        cfg.teamCount = v;
+        renderTeam();
+      });
+    }
+    const count = cfg.teamCount;
+    const each = n / count;
+    const partners = each - 1;
+    $('#setup-team-info').textContent = count === 2
+      ? `You + ${partners} bot partner${partners > 1 ? 's' : ''} vs ${each} bots. Partners sit opposite.`
+      : `${count} teams of ${each}. You + 1 bot partner vs ${count - 1} other pairs. Partners sit opposite.`;
   }
 
   $('#setup-start').addEventListener('click', () => {
@@ -81,12 +96,13 @@ export function setupScreen({ onStart, onCreateTeamRoom }) {
     }
     const opts = {
       teamMode: mode === 'team',
+      teamCount: mode === 'team' ? teamCountFor(n, cfg.teamCount) : 2,
       assist: $('#setup-assist').checked,
       quickMode: cfg.quick,
       blockades: $('#setup-blockades').checked,
       captureToEnterHome: $('#setup-capture').checked,
     };
-    if (opts.teamMode) seats.forEach((s, i) => { s.team = teamOf(i); });
+    if (opts.teamMode) seats.forEach((s, i) => { s.team = teamOf(i, opts.teamCount); });
     onStart({ n, seats, opts, title: TITLES[mode] });
   });
   $('#setup-online').addEventListener('click', () => {

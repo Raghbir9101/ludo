@@ -276,6 +276,15 @@ test('team mode 6 and 8 players alternate seats', () => {
   assert.deepEqual(st8.players.map((p) => p.team), [0, 1, 0, 1, 0, 1, 0, 1]);
 });
 
+test('6 and 8 players can use 2-player teams (partners sit opposite)', () => {
+  const st6 = game(6, { teamMode: true, teamCount: 3 });
+  assert.equal(st6.opts.teamCount, 3);
+  assert.deepEqual(st6.players.map((p) => p.team), [0, 1, 2, 0, 1, 2]);
+  const st8 = game(8, { teamMode: true, teamCount: 4 });
+  assert.equal(st8.opts.teamCount, 4);
+  assert.deepEqual(st8.players.map((p) => p.team), [0, 1, 2, 3, 0, 1, 2, 3]);
+});
+
 test('assist mode: finished player moves a teammate token', () => {
   const H = homeProgress(4);
   let st = game(4, { teamMode: true, assist: true });
@@ -327,5 +336,15 @@ test('random full games always terminate with complete ranks', () => {
       assert.ok(st.over, `n=${n} team=${teamMode} finished`);
       assert.equal(st.ranks.length, teamMode ? 2 : n);
     }
+  }
+  for (const [n, teamCount] of [[6, 3], [8, 4]]) {
+    let st = game(n, { teamMode: true, teamCount });
+    let guard = 0;
+    while (!st.over && guard++ < 50000) {
+      st = roll(st, rollDie(st)).state;
+      if (st.phase === 'move') st = move(st, st.legal[Math.floor(Math.random() * st.legal.length)]).state;
+    }
+    assert.ok(st.over, `n=${n} teams=${teamCount} finished`);
+    assert.equal(st.ranks.length, teamCount);
   }
 });

@@ -307,6 +307,8 @@ button, input { font-family: inherit; }
   background: var(--gold-frame); color: #5a2a00; box-shadow: 0 3px 0 var(--gold-d), inset 0 1px 0 #fff6c4;
 }
 .seg.small button { font-size: 14px; padding: 8px 4px; }
+.team-split { margin-top: 10px; }
+.team-split button { font-size: 13px; letter-spacing: 0; }
 .toggle { display: flex; align-items: center; gap: 12px; margin-top: 12px; font-size: 17px; font-weight: 500; cursor: pointer; clear: both; }
 .toggle input { appearance: none; width: 52px; height: 30px; border-radius: 99px; background: var(--navy-d); border: 2px solid #3d5ea8; position: relative; cursor: pointer; transition: background 150ms; flex: none; margin: 0; }
 .toggle input::after { content: ''; position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 2px 3px rgba(0,0,0,.3); transition: transform 180ms cubic-bezier(.3,1.6,.5,1); }
@@ -374,6 +376,10 @@ button, input { font-family: inherit; }
 .seat-board { margin-bottom: 14px; }
 .seat-board.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .seat-board.teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
+.seat-board.teams.tc-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.seat-board.teams.tc-3 .seat-card { min-height: 100px; padding: 8px 6px; }
+.seat-board.teams.tc-3 .sc-av { width: 34px; height: 34px; font-size: 20px; }
+.seat-board.teams.tc-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .seat-board.teams .seat-card { flex-direction: column; gap: 6px; padding: 10px 8px 10px; text-align: center; min-height: 112px; justify-content: center; }
 .seat-board.teams .seat-card::before { right: 0; bottom: auto; width: auto; height: 5px; }
 .seat-board.teams .sc-info { width: 100%; align-items: center; }
@@ -387,6 +393,8 @@ button, input { font-family: inherit; }
 }
 .team-col.team-a { --team-c: #ff8a3d; }
 .team-col.team-b { --team-c: #3dd6ff; }
+.team-col.team-c { --team-c: #c084fc; }
+.team-col.team-d { --team-c: #4ade80; }
 .team-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px; font-weight: 700; letter-spacing: 1px; color: var(--team-c); text-shadow: 0 2px 0 var(--navy-d); }
 .team-head small { font-size: 13px; color: var(--ink-soft); }
 

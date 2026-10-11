@@ -1,7 +1,7 @@
 // Game screen: board, HUD panels, dice, input, and the ordered event animation queue.
 import { BoardView, layoutTokens, colorOf, drawPawn } from '../board/render.js';
 import { cellPos } from '../board/geometry.js';
-import { cellOf, homeProgress, QUICK_CHAT, EMOJIS, COLORS } from '/shared/rules.js';
+import { cellOf, homeProgress, QUICK_CHAT, EMOJIS, COLORS, TEAM_NAMES, teamName } from '/shared/rules.js';
 import { computeMove, distinctMoves } from '/shared/engine.js';
 import { Dice } from '../dice.js';
 import { tween, wait, Ease, motion, addRenderer, kick, Particles, Confetti, finishAll, dur, lerp } from '../anim.js';
@@ -254,7 +254,7 @@ export class GameScreen {
         break;
       }
       case 'teamFinished':
-        this.callout(`Team ${'AB'[e.team]} done!`, null, true);
+        this.callout(`${teamName(e.team)} done!`, null, true);
         await wait(dur(600));
         break;
       case 'gameOver':
@@ -383,8 +383,8 @@ export class GameScreen {
     this.confetti.fire([...colors, '#ffffff', '#FFD54A']);
     const iWon = winnerSeats.some((s) => this.isMine(s));
     audio.play(iWon || this.ctrl?.isSpectator ? 'win' : 'finish');
-    this.callout(st.opts.teamMode ? `Team ${'AB'[ranks[0]]} wins!` : `${this.seatName(ranks[0])} wins!`, winnerSeats[0]);
-    announce(st.opts.teamMode ? `Game over. Team ${'AB'[ranks[0]]} wins.` : `Game over. ${this.seatName(ranks[0])} wins.`, true);
+    this.callout(st.opts.teamMode ? `${teamName(ranks[0])} wins!` : `${this.seatName(ranks[0])} wins!`, winnerSeats[0]);
+    announce(st.opts.teamMode ? `Game over. ${teamName(ranks[0])} wins.` : `Game over. ${this.seatName(ranks[0])} wins.`, true);
     audio.stopMusic(true);
     await wait(motion.fastForward ? 0 : 1700);
     this.onGameOver?.(this.ctrl, ranks);
@@ -451,11 +451,11 @@ export class GameScreen {
       pan.el.title = meta.name || this.colorName(p.seat);
       pan.home.textContent = String(home);
       pan.home.hidden = home === 0;
-      pan.tag.textContent = this.st.opts.teamMode ? 'AB'[p.team] : '';
+      pan.tag.textContent = this.st.opts.teamMode ? TEAM_NAMES[p.team] : '';
       pan.tag.hidden = !this.st.opts.teamMode;
       pan.el.classList.toggle('active', p.seat === this.activeSeat && !this.st.over);
       pan.el.classList.toggle('done', p.done);
-      const extra = [this.st.opts.teamMode ? `team ${'AB'[p.team]}` : '', meta.bot ? 'bot' : '', tag].filter(Boolean).join(', ');
+      const extra = [this.st.opts.teamMode ? teamName(p.team) : '', meta.bot ? 'bot' : '', tag].filter(Boolean).join(', ');
       pan.el.setAttribute('aria-label', `${name}${extra ? ` (${extra})` : ''}, ${home} of 4 tokens home${p.seat === this.activeSeat ? ', playing now' : ''}`);
     }
     this.invalidate();
